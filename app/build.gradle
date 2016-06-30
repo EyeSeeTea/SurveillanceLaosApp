@@ -1,0 +1,111 @@
+buildscript {
+    repositories {
+       maven { url 'https://maven.fabric.io/public' }
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'io.fabric.tools:gradle:1.+'
+        classpath 'com.github.dcendents:android-maven-plugin:1.2'
+        //classpath 'com.github.dcendents:android-maven-gradle-plugin:1.3'
+    }
+}
+apply plugin: 'com.android.application'
+apply plugin: 'io.fabric'
+
+repositories {
+    maven { url 'https://maven.fabric.io/public' }
+}
+//apply plugin: 'com.neenbedankt.android-apt'
+
+android {
+
+    signingConfigs {
+        config {}
+    }
+
+    compileSdkVersion 21
+    buildToolsVersion "21.0.1"
+
+    defaultConfig {
+        minSdkVersion 15
+        targetSdkVersion 21
+        versionCode 9
+        multiDexEnabled true
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        signingConfig signingConfigs.config
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        debug{
+            debuggable true
+        }
+    }
+    //TODO This config is related to a known issue: http://stackoverflow.com/questions/20827885/android-studio-0-4-duplicate-files-copied-in-apk-meta-inf-license-txt
+    packagingOptions {
+        // gradle requires to exclude these files both
+        // with .txt extension and without.
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/LICENSE.txt'
+
+        // without .txt
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/LICENSE'
+    }
+    productFlavors {
+        cambodia {
+            applicationId 'org.eyeseetea.surveillance_kh_bb'
+            versionName "1.2.4"
+        }
+        laos {
+            applicationId 'org.eyeseetea.surveillance_la_bb'
+            versionName "1.2.4"
+        }
+    }
+    
+    lintOptions {
+        disable 'RtlSymmetry', 'RtlHardcoded'
+    }    
+}
+
+dependencies {
+    apply plugin: 'android-apt'
+    apply plugin: 'com.github.dcendents.android-maven'
+
+
+    compile 'com.android.support:support-v4:21.2.1'
+    compile 'com.android.support:appcompat-v7:21.2.1'
+    compile 'com.android.support:support-annotations:21.2.1'
+
+    // App dependencies
+    compile 'com.opencsv:opencsv:3.3'
+    compile 'com.google.android.gms:play-services:8.1.0'
+    compile 'com.google.guava:guava:18.0'
+    compile 'com.squareup.okhttp:okhttp:2.2.0'
+    compile 'com.googlecode.libphonenumber:libphonenumber:7.0.9'
+    compile 'com.android.support:multidex:1.0.1'
+//    apt 'com.raizlabs.android:DBFlow-Compiler:2.2.1'
+//    compile 'com.raizlabs.android:DBFlow-Core:2.2.1'
+//    compile 'com.raizlabs.android:DBFlow:2.2.1'
+    apt project(':DBFlowORM:DBFlow-Compiler')
+    compile project(':DBFlowORM:DBFlow-Core')
+    compile project(':DBFlowORM:DBFlow')
+    compile project(':sdk:app')
+    
+    compile('com.crashlytics.sdk.android:crashlytics:2.5.2@aar') {
+        transitive = true;
+    }
+
+    // Unit testing dependencies
+    testCompile 'junit:junit:4.12'
+
+    // Instrumented tests dependencies
+    androidTestCompile 'com.android.support.test:runner:0.4.1'
+    androidTestCompile 'com.android.support.test:rules:0.4.1'
+    androidTestCompile 'com.android.support.test.espresso:espresso-core:2.2.1'
+    androidTestCompile 'com.android.support.test.espresso:espresso-intents:2.2.1'
+}
