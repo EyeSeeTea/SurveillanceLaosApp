@@ -13,6 +13,7 @@
 <string name="dialog_title_delete_survey">"លុបលទ្ធផលដែលបានផ្ញើរចេញ"</string>
 <string name="dialog_info_delete_survey">"តើ​អ្នក​ប្រាកដ​ជា​ចង់​លុបចោល​ទាំង​ស្រុង​ការស្ទង់មតិ​នេះ​?"</string>
 <string name="dialog_title_error">"មានកំហុស"</string>
+<string name="toast_push_is_pushing">"ការផ្ញើការស្ទង់មតិមុនពេលចូលទៅការកំណត់។"</string>
 <string name="create_info_organization_unit">"Organization Unit"</string>
 <string name="assessment_sent_date">"កាលបរិច្ឆេទ"</string>
 <string name="assessment_title_header">"ការបញ្ជូនមិនទាន់សម្រេច"</string>
@@ -26,7 +27,7 @@
 ទំនាក់ទំនងមក ភី អេស អាយ តាមរយៈលេខ១២៣៤៥៦៧៨៩"</string>
 <string name="exception_org_unit_banned">"កន្លែងផ្តល់សេវាត្រូវបានបិទ។
 ទំនាក់ទំនងមក ភី អេស អាយ តាមរយៈលេខ១២៣៤៥៦៧៨៩"</string>
-<string name="dynamic_error_phone_format">"បញ្ចូលលេខទូរស័ព្ទមិនត្រឹមត្រូវ ( 0NN NNN NNN{N} )"</string>
+<string name="dynamic_error_phone_format">"បញ្ចូលលេខទូរស័ព្ទមិនត្រឹមត្រូវ  ((xxx) xxx-xxx, (020) xxxx-xxxx, (030) xxx-xxxx)"</string>
 <string name="dynamic_error_age">"អាយុមិនត្រឹមត្រូវ"</string>
 <string name="title_activity_settings">"ការកំនត់"</string>
 <string name="settings_checkbox_customize_fonts">"ប្តូរពុម្ពអក្សរ?"</string>
@@ -75,6 +76,7 @@
 <string name="create_info_zone">"តំបន់"</string>
 <string name="dhis_url_error">"DHIS URL មានកំហុស"</string>
 <string name="dhis_url_error_bad_version">"ម៉ាស៊ីនបម្រើ DHIS មិនសមស្រប (អនុញ្ញាត តែ 2.20, 2.21, 2.22 តែប៉ុណ្ណោះ)"</string>
+<string name="dhis_url_error_generic">"កំហុសម៉ាស៊ីនបម្រើនេះ។ ម៉ាស៊ីនបម្រើមិនឆ្លើយតបឱ្យបានត្រឹមត្រូវ"</string>
 <string name="dhis_url_error_bad_credentials">"កម្មវិធីនេះមិនត្រូវបានអនុញ្ញាតនៅក្នុងម៉ាស៊ីនបម្រើដែលបានផ្តល់ឱ្យ"</string>
 <string name="settings_menu_monitoring">"ម៉ូនីទ័រ"</string>
 <string name="monitor_label">"សូមធ្វើការជ្រើសរើសរយៈពេលមួយ៖"</string>
@@ -118,4 +120,13 @@
 <string name="font_size_level2_title">"មធ្យម"</string>
 <string name="font_size_level3_title">"ធំ"</string>
 <string name="font_size_level4_title">"ធំបំផុត"</string>
+<string name="option_counter">"ការធ្វើឡើងវិញ:"</string>
+<string name="option_confirm">"អះអាងជម្រើស"</string>
+<string name="monitor_row_title_denied">"បដិសេធ"</string>
+<string name="monitor_row_title_drug">" គ្រឿងញៀន "</string>
+<string name="monitor_row_title_pregnant">"មានផ្ទៃពោះ "</string>
+<string name="monitor_row_title_severe">" ធ្ងន់ធ្ងរ "</string>
+<string name="monitor_row_title_submission">" ការដាក់"</string>
+<string name="review_title">សូមធ្វើការពិនិត្យឡើងវិញមុននឹង</string>
+<string name="review_subtitle">ធ្វើការបញ្ជូន</string>
 </resources>

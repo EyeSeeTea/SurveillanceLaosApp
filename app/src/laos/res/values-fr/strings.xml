@@ -13,6 +13,7 @@
 <string name="dialog_title_delete_survey">"Supprimer envoyés"</string>
 <string name="dialog_info_delete_survey">"Etes-vous sûr que vous voulez supprimer tous les sondages envoyés?"</string>
 <string name="dialog_title_error">"Erreur"</string>
+<string name="toast_push_is_pushing">"Envoi d'enquêtes avant d'entrer dans les paramètres."</string>
 <string name="create_info_organization_unit">"Unité d'organisation"</string>
 <string name="assessment_sent_date">"Date de remplissement"</string>
 <string name="assessment_title_header">"Attendant Envoyer"</string>
@@ -24,7 +25,7 @@
 <string name="survey_info_completed">"Le sondage a été effectué avec succès"</string>
 <string name="exception_org_unit_not_valid">"Code de sortie est pas active pour le programme . Contactez PSI au 123456789"</string>
 <string name="exception_org_unit_banned">"Sortie est fermée ou bloquée. Contactez PSI au 123456789"</string>
-<string name="dynamic_error_phone_format">"Le numéro de téléphone donné a un format incorrect ( 0NN NNN NNN{N} )"</string>
+<string name="dynamic_error_phone_format">"Le numéro de téléphone donné a un format incorrect  ((xxx) xxx-xxx, (020) xxxx-xxxx, (030) xxx-xxxx)"</string>
 <string name="dynamic_error_age">"âge invalide"</string>
 <string name="title_activity_settings">"Parametres"</string>
 <string name="settings_checkbox_customize_fonts">"Personaliser les fonts?"</string>
@@ -73,6 +74,7 @@
 <string name="create_info_zone">"Zone"</string>
 <string name="dhis_url_error">"DHIS URL Error"</string>
 <string name="dhis_url_error_bad_version">"Serveur dhis pas pris en charge (seulement 2.20, 2.21, 2.22 acceptés)"</string>
+<string name="dhis_url_error_generic">"Cette erreur de serveur. Le serveur ne répond pas correctement"</string>
 <string name="dhis_url_error_bad_credentials">"Ce soft est pas autorisé dans le serveur donné"</string>
 <string name="settings_menu_monitoring">"Moniteur"</string>
 <string name="monitor_label">"S\'il vous plaît, sélectionner une période de temps"</string>
@@ -116,4 +118,13 @@
 <string name="font_size_level2_title">"Moyen"</string>
 <string name="font_size_level3_title">"Grand"</string>
 <string name="font_size_level4_title">"Extra grand"</string>
+<string name="option_counter">"Répétitions: "</string>
+<string name="option_confirm">"Confirmer option"</string>
+<string name="monitor_row_title_denied">"Refusé"</string>
+<string name="monitor_row_title_drug">Drug</string>
+<string name="monitor_row_title_pregnant">Enceinte</string>
+<string name="monitor_row_title_severe">"Sévère"</string>
+<string name="monitor_row_title_submission">Soumission</string>
+<string name="review_title">"S'il vous plaît vérifier avant"</string>
+<string name="review_subtitle">Transmission</string>
 </resources>

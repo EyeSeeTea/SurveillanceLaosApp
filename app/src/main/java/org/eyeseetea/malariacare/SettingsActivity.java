@@ -46,6 +46,7 @@ import android.widget.TextView;
 import com.squareup.okhttp.HttpUrl;
 import com.squareup.otto.Subscribe;
 
+import org.eyeseetea.malariacare.database.iomodules.dhis.exporter.PushController;
 import org.eyeseetea.malariacare.database.iomodules.dhis.importer.PullController;
 import org.eyeseetea.malariacare.database.model.Tab;
 import org.eyeseetea.malariacare.database.utils.PopulateDB;
@@ -314,13 +315,7 @@ public class SettingsActivity extends PreferenceActivity implements SharedPrefer
             return;
         }
 
-        //Server version not supported -> Error
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.dhis_url_error)
-                .setMessage(R.string.dhis_url_error_bad_version)
-                .setNeutralButton(android.R.string.yes, null)
-                .create()
-                .show();
+        showServerError(serverVersion);
     }
 
     /**
@@ -366,7 +361,22 @@ public class SettingsActivity extends PreferenceActivity implements SharedPrefer
             initLoginPrePull(serverInfo);
             return;
         }
+        showServerError(serverVersion);
 
+
+    }
+
+    private void showServerError(String serverVersion) {
+        //Other error like: Too many follow-up requests: 21
+        if("".equals(serverVersion)){
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.dhis_url_error)
+                    .setMessage(R.string.dhis_url_error_generic)
+                    .setNeutralButton(android.R.string.yes, null)
+                    .create()
+                    .show();
+            return;
+        }
         //Server version not supported -> Error
         new AlertDialog.Builder(this)
                 .setTitle(R.string.dhis_url_error)
@@ -388,8 +398,10 @@ public class SettingsActivity extends PreferenceActivity implements SharedPrefer
 
     @Subscribe
     public void callbackLoginPrePull(NetworkJob.NetworkJobResult<ResourceType> result) {
+        if(PushController.getInstance().isPushInProgress())
+            return;
         //Nothing to check
-        if(result==null || !result.getResourceType().equals(ResourceType.USERS)){
+        if(result==null || result.getResourceType()==null || !result.getResourceType().equals(ResourceType.USERS)){
             return;
         }
 

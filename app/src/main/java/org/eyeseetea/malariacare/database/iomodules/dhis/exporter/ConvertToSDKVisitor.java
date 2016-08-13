@@ -21,9 +21,13 @@ package org.eyeseetea.malariacare.database.iomodules.dhis.exporter;
 
 import android.content.Context;
 import android.location.Location;
+import android.os.Build;
 import android.util.Log;
 
-import org.eyeseetea.malariacare.R;
+import com.crashlytics.android.Crashlytics;
+import com.raizlabs.android.dbflow.sql.builder.Condition;
+import com.raizlabs.android.dbflow.sql.language.Select;
+
 import org.eyeseetea.malariacare.database.iomodules.dhis.importer.models.EventExtended;
 import org.eyeseetea.malariacare.database.model.CompositeScore;
 import org.eyeseetea.malariacare.database.model.OrgUnit;
@@ -37,9 +41,15 @@ import org.eyeseetea.malariacare.network.PushClient;
 import org.eyeseetea.malariacare.phonemetadata.PhoneMetaData;
 import org.eyeseetea.malariacare.utils.Constants;
 import org.eyeseetea.malariacare.utils.Utils;
+import org.eyeseetea.malariacare.views.ShowException;
 import org.hisp.dhis.android.sdk.persistence.models.DataValue;
 import org.hisp.dhis.android.sdk.persistence.models.Event;
+import org.hisp.dhis.android.sdk.persistence.models.FailedItem;
+import org.hisp.dhis.android.sdk.persistence.models.FailedItem$Table;
 import org.hisp.dhis.android.sdk.persistence.models.ImportSummary;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -86,6 +96,13 @@ public class ConvertToSDKVisitor implements IConvertToSDKVisitor {
 
     @Override
     public void visit(Survey survey) throws Exception{
+
+        //Precondition
+        if(isEmpty(survey)){
+            survey.delete();
+            return;
+        }
+
         //Turn survey into an event
         this.currentSurvey=survey;
 
@@ -95,7 +112,6 @@ public class ConvertToSDKVisitor implements IConvertToSDKVisitor {
         //Calculates scores and update survey
         Log.d(TAG,"Registering scores...");
         List<CompositeScore> compositeScores = ScoreRegister.loadCompositeScores(survey);
-        updateSurvey(compositeScores);
 
         //Turn question values into dataValues
         Log.d(TAG,"Creating datavalues from questions...");
@@ -108,6 +124,29 @@ public class ConvertToSDKVisitor implements IConvertToSDKVisitor {
 
         //Annotate both objects to update its state once the process is over
         annotateSurveyAndEvent();
+    }
+
+    private boolean isEmpty(Survey survey){
+        if(survey==null){
+            return true;
+        }
+
+        List<Value> values=survey.getValuesFromDB();
+        if(values==null || values.isEmpty()){
+            logEmptySurveyException(survey);
+            return true;
+        }
+        return false;
+    }
+
+    public static void logEmptySurveyException(Survey survey){
+        PhoneMetaData phoneMetaData = Session.getPhoneMetaData();
+        String info=String.format("Survey: %s\nPhoneMetaData: %s\nAPI: %s",
+                survey.toString(),
+                phoneMetaData==null?"":phoneMetaData.getPhone_metaData(),
+                Build.VERSION.RELEASE
+                );
+        Crashlytics.logException(new Throwable(info));
     }
     /**
      * Builds several datavalues from the mainScore of the survey
@@ -213,15 +252,6 @@ public class ConvertToSDKVisitor implements IConvertToSDKVisitor {
     }
 
     /**
-     * Several properties must be updated when a survey is about to be sent.
-     * This changes will be saved just when process finish successfully.
-     * @param compositeScores
-     */
-    private void updateSurvey(List<CompositeScore> compositeScores){
-        currentSurvey.setStatus(Constants.SURVEY_SENT);
-    }
-
-    /**
      * Updates the location of the current event that it is being processed
      * @throws Exception
      */
@@ -257,23 +287,42 @@ public class ConvertToSDKVisitor implements IConvertToSDKVisitor {
             Survey iSurvey=surveys.get(i);
             Event iEvent=events.get(i);
             ImportSummary importSummary=importSummaryMap.get(iEvent.getLocalId());
+            FailedItem failedItem= hasConflict(iEvent.getLocalId());
             if(hasImportSummaryErrors(importSummary)){
+
                 //Some error while pushing should be done again
-                iSurvey.setStatus(Constants.SURVEY_IN_PROGRESS);
+                iSurvey.setStatus(Constants.SURVEY_COMPLETED);
+                if(failedItem!=null) {
+                    List<String> failedUids=getFailedUidQuestion(failedItem.getErrorMessage());
+                    for(String uid:failedUids) {
+                        Log.d(TAG, "PUSH process...Conflict in "+uid+" dataElement. Survey: "+iSurvey.getId_survey());
+                        iSurvey.setStatus(Constants.SURVEY_CONFLICT);
+                    }
+                }
                 iSurvey.save();
 
                 //Generated event must be remove too
                 iEvent.delete();
             }else{
+                iSurvey.setStatus(Constants.SURVEY_SENT);
                 iSurvey.saveMainScore();
                 iSurvey.save();
                 Log.d("DpBlank", "Saving suvey as completed " + iSurvey);
-
-                //To avoid several pushes
-                iEvent.setFromServer(true);
-                iEvent.save();
             }
         }
+    }
+
+    /**
+     * Checks whether the given event contains errors in SDK FailedItem table or has been successful.
+     * If not return null, it is becouse this item had a conflict.
+     * @param localId
+     * @return
+     */
+    private FailedItem hasConflict(long localId){
+        return  new Select()
+                .from(FailedItem.class)
+                .where(Condition.column(FailedItem$Table.ITEMID)
+                        .is(localId)).querySingle();
     }
 
     /**
@@ -291,5 +340,36 @@ public class ConvertToSDKVisitor implements IConvertToSDKVisitor {
             return true;
         }
         return importSummary.getImportCount().getImported()==0;
+    }
+
+
+    /**
+     * Get dataelement fails from errormessage JSON.
+     * @param responseData
+     * @return
+     */
+    private List<String> getFailedUidQuestion(String responseData){
+        String message="";
+        List<String> uid=new ArrayList<>();
+        JSONArray jsonArrayResponse=null;
+        JSONObject jsonObjectResponse= null;
+        try {
+            jsonObjectResponse = new JSONObject(responseData);
+            message=jsonObjectResponse.getString("message");
+            jsonObjectResponse=new JSONObject(jsonObjectResponse.getString("response"));
+            jsonArrayResponse=new JSONArray(jsonObjectResponse.getString("importSummaries"));
+            jsonObjectResponse=new JSONObject(jsonArrayResponse.getString(0));
+            jsonArrayResponse=new JSONArray(jsonObjectResponse.getString("conflicts"));
+            //values
+            for(int i=0;i<jsonArrayResponse.length();i++) {
+                jsonObjectResponse = new JSONObject(jsonArrayResponse.getString(i));
+                uid.add(jsonObjectResponse.getString("object"));
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        if(message!="")
+            ShowException.showError(message,PreferencesState.getInstance().getContext());
+        return  uid;
     }
 }

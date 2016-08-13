@@ -109,6 +109,8 @@ public class Question extends BaseModel {
     @Column
     Integer visible;
 
+    @Column
+    String path;
 
     /**
      * Constant that reflects a visible question in information
@@ -147,6 +149,11 @@ public class Question extends BaseModel {
      * List of question Options of this question
      */
     private List<QuestionOption> questionOptions;
+
+    /**
+     * List of question Thresholds associated with this question
+     */
+    private List<QuestionThreshold> questionThresholds;
 
     /**
      * Cached reference to next question for this one.
@@ -280,6 +287,14 @@ public class Question extends BaseModel {
 
     public void setFeedback(String feedback) {
         this.feedback = feedback;
+    }
+
+    public String getPath() {
+        return path;
+    }
+
+    public void setPath(String path) {
+        this.path = path;
     }
 
     public Header getHeader() {
@@ -444,6 +459,21 @@ public class Question extends BaseModel {
 
     public boolean hasQuestionOption() {
         return !this.getQuestionOption().isEmpty();
+    }
+
+    public List<QuestionThreshold> getQuestionThresholds() {
+
+        if (this.questionThresholds == null) {
+            this.questionThresholds= new Select().from(QuestionThreshold.class)
+                    .indexedBy(Constants.QUESTION_THRESHOLDS_QUESTION_IDX)
+                    .where(Condition.column(QuestionThreshold$Table.ID_QUESTION).eq(this.getId_question()))
+                    .queryList();
+        }
+        return this.questionThresholds;
+    }
+
+    public boolean hasQuestionThresholds(){
+        return !this.getQuestionThresholds().isEmpty();
     }
 
     public List<Match> getMatches() {
@@ -631,46 +661,30 @@ public class Question extends BaseModel {
     }
 
     /**
-     * Counts the number of required questions (without a parent question).
+     * Counts the number of required children questions by a option.
      *
-     * @param tabGroup
+     * @param
      * @return
      */
-    public static int countRequiredByProgram(TabGroup tabGroup) {
-        if (tabGroup == null || tabGroup.getId_tab_group() == null) {
-            return 0;
-        }
-
-        // Count all the quesions that may have an answer
-        long totalAnswerableQuestions = new Select().count()
+    public static int countChildrenByOptionValue(Long id_option){
+        return (int) new Select().count()
                 .from(Question.class).as("q")
-                .join(Header.class, Join.JoinType.LEFT).as("h")
-                .on(Condition.column(ColumnAlias.columnWithTable("q", Question$Table.ID_HEADER))
-                        .eq(ColumnAlias.columnWithTable("h", Header$Table.ID_HEADER)))
-                .join(Tab.class, Join.JoinType.LEFT).as("t")
-                .on(Condition.column(ColumnAlias.columnWithTable("h", Header$Table.ID_TAB))
-                        .eq(ColumnAlias.columnWithTable("t", Tab$Table.ID_TAB)))
+                .join(QuestionRelation.class, Join.JoinType.INNER).as("qr")
+                .on(Condition.column(ColumnAlias.columnWithTable("q", Question$Table.ID_QUESTION))
+                        .eq(ColumnAlias.columnWithTable("qr", QuestionRelation$Table.ID_QUESTION)))
+                .join(Match.class, Join.JoinType.INNER).as("ma")
+                .on(Condition.column(ColumnAlias.columnWithTable("ma", Match$Table.ID_QUESTION_RELATION))
+                        .eq(ColumnAlias.columnWithTable("qr", QuestionRelation$Table.ID_QUESTION_RELATION)))
+                .join(QuestionOption.class, Join.JoinType.INNER).as("qo")
+                .on(Condition.column(ColumnAlias.columnWithTable("qo", QuestionOption$Table.ID_MATCH))
+                        .eq(ColumnAlias.columnWithTable("ma", Match$Table.ID_MATCH)))
                 .where(Condition.column(ColumnAlias.columnWithTable("q", Question$Table.OUTPUT)).isNot(Constants.NO_ANSWER))
-                .and(Condition.column(ColumnAlias.columnWithTable("t", Tab$Table.ID_TAB_GROUP)).eq(tabGroup.getId_tab_group())).count();
-
-        // Count children questions from the given taggroup
-        long numChildrenQuestion = new Select().count()
-                .from(QuestionRelation.class).as("qr")
-                .join(Question.class, Join.JoinType.LEFT).as("q")
-                .on(Condition.column(ColumnAlias.columnWithTable("qr", QuestionRelation$Table.ID_QUESTION))
-                        .eq(ColumnAlias.columnWithTable("q", Question$Table.ID_QUESTION)))
-                .join(Header.class, Join.JoinType.LEFT).as("h")
-                .on(Condition.column(ColumnAlias.columnWithTable("q", Question$Table.ID_HEADER))
-                        .eq(ColumnAlias.columnWithTable("h", Header$Table.ID_HEADER)))
-                .join(Tab.class, Join.JoinType.LEFT).as("t")
-                .on(Condition.column(ColumnAlias.columnWithTable("h", Header$Table.ID_TAB))
-                        .eq(ColumnAlias.columnWithTable("t", Tab$Table.ID_TAB)))
-                .where(Condition.column(ColumnAlias.columnWithTable("q", Question$Table.OUTPUT)).isNot(Constants.NO_ANSWER))
-                .and(Condition.column(ColumnAlias.columnWithTable("t", Tab$Table.ID_TAB_GROUP)).eq(tabGroup.getId_tab_group()))
-                .and(Condition.column(ColumnAlias.columnWithTable("qr", QuestionRelation$Table.OPERATION)).eq(Constants.OPERATION_TYPE_PARENT)).count();
-
-        // Return number of parents (total - children)
-        return (int) (totalAnswerableQuestions - numChildrenQuestion);
+                .and(Condition.column(ColumnAlias.columnWithTable("q",Question$Table.OUTPUT)).isNot(Constants.COUNTER))
+                .and(Condition.column(ColumnAlias.columnWithTable("q",Question$Table.OUTPUT)).isNot(Constants.REMINDER))
+                .and(Condition.column(ColumnAlias.columnWithTable("q",Question$Table.OUTPUT)).isNot(Constants.WARNING))
+                .and(Condition.column(ColumnAlias.columnWithTable("qr", QuestionRelation$Table.OPERATION)).eq(QuestionRelation.PARENT_CHILD))
+                .and(Condition.column(ColumnAlias.columnWithTable("qo",QuestionOption$Table.ID_OPTION)).eq(id_option))
+                .count();
     }
 
     /**
@@ -708,7 +722,7 @@ public class Question extends BaseModel {
                                 .eq(ColumnAlias.columnWithTable("qo", QuestionOption$Table.ID_OPTION)))
                 .where(Condition.column(ColumnAlias.columnWithTable("v", Value$Table.ID_SURVEY)).eq(survey.getId_survey()))
                 .and(Condition.column(ColumnAlias.columnWithTable("qr", QuestionRelation$Table.ID_QUESTION)).eq(this.getId_question()))
-                .and(Condition.column(ColumnAlias.columnWithTable("qr", QuestionRelation$Table.OPERATION)).eq(Constants.OPERATION_TYPE_MATCH))
+                .and(Condition.column(ColumnAlias.columnWithTable("qr", QuestionRelation$Table.OPERATION)).eq(QuestionRelation.MATCH))
                 .queryList();
 
         //No values no match
@@ -900,6 +914,48 @@ public class Question extends BaseModel {
     }
 
     /**
+     * Find the counter question for this question taking into the account the given option.
+     * Only 1 counter question will be activated by option
+     * @param option
+     * @return
+     */
+    public Question findCounterByOption(Option option){
+
+        //No option -> no children
+        if(option==null){
+            return null;
+        }
+
+        List<QuestionOption> questionOptions=this.getQuestionOption();
+        //No trigger (questionOption) -> no counters
+        if(questionOptions==null || questionOptions.size()==0){
+            return null;
+        }
+
+        //Navigate to questionRelation to get child questions
+        long optionId=option.getId_option().longValue();
+        for(QuestionOption questionOption:questionOptions){
+            //Other options must be discarded
+            long currentOptionId=questionOption.getOption().getId_option().longValue();
+            if(optionId!=currentOptionId){continue;}
+            Match match =questionOption.getMatch();
+            if(match==null){continue;}
+
+            QuestionRelation questionRelation=match.getQuestionRelation();
+            //only COUNTER RELATIONSHIPs are interesting for this
+            if(questionRelation==null || questionRelation.getOperation()!=QuestionRelation.COUNTER){continue;}
+
+            Question childQuestion=questionRelation.getQuestion();
+            if(childQuestion==null){continue;}
+
+            //Found
+            return childQuestion;
+        }
+
+        return null;
+    }
+
+    /**
      * Returns a list of questionOptions that activates this question (might be several though it tends to be just one)
      * @return
      */
@@ -1070,6 +1126,8 @@ public class Question extends BaseModel {
             return false;
         if (id_parent != null ? !id_parent.equals(question.id_parent) : question.id_parent != null)
             return false;
+        if (path != null ? !path.equals(question.path) : question.path != null)
+            return false;
         if (total_questions != null ? !total_questions.equals(question.total_questions) : question.total_questions != null)
             return false;
         if (visible != null ? !visible.equals(question.visible) : question.visible != null)
@@ -1096,6 +1154,7 @@ public class Question extends BaseModel {
         result = 31 * result + (id_parent != null ? id_parent.hashCode() : 0);
         result = 31 * result + (id_composite_score != null ? id_composite_score.hashCode() : 0);
         result = 31 * result + (visible != null ? visible.hashCode() : 0);
+        result = 31 * result + (path != null ? path.hashCode() : 0);
         result = 31 * result + (total_questions != null ? total_questions.hashCode() : 0);
         return result;
     }
@@ -1120,6 +1179,7 @@ public class Question extends BaseModel {
                 ", id_composite_score=" + id_composite_score +
                 ", total_questions=" + total_questions +
                 ", visible=" + visible +
+                ", path=" + path +
                 '}';
     }
 }

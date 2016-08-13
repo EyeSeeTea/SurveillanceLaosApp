@@ -13,6 +13,7 @@
 <string name="dialog_title_delete_survey">"Supprimer envoyés"</string>
 <string name="dialog_info_delete_survey">"Etes-vous sûr que vous voulez supprimer tous les sondages envoyés?"</string>
 <string name="dialog_title_error">"Erreur"</string>
+<string name="toast_push_is_pushing">"Envoi d'enquêtes avant d'entrer dans les paramètres."</string>
 <string name="create_info_organization_unit">"Unité d'organisation"</string>
 <string name="assessment_sent_date">"Date de remplissement"</string>
 <string name="assessment_title_header">"Attendant Envoyer"</string>
@@ -73,6 +74,7 @@
 <string name="create_info_zone">"Zone"</string>
 <string name="dhis_url_error">"DHIS URL Error"</string>
 <string name="dhis_url_error_bad_version">"Serveur dhis pas pris en charge (seulement 2.20, 2.21, 2.22 acceptés)"</string>
+<string name="dhis_url_error_generic">"Cette erreur de serveur. Le serveur ne répond pas correctement"</string>
 <string name="dhis_url_error_bad_credentials">"Ce soft est pas autorisé dans le serveur donné"</string>
 <string name="settings_menu_monitoring">"Moniteur"</string>
 <string name="monitor_label">"S\'il vous plaît, sélectionner une période de temps"</string>
@@ -116,4 +118,6 @@
 <string name="font_size_level2_title">"Moyen"</string>
 <string name="font_size_level3_title">"Grand"</string>
 <string name="font_size_level4_title">"Extra grand"</string>
+<string name="option_counter">"Répétitions: "</string>
+<string name="option_confirm">"Confirmer option"</string>
 </resources>

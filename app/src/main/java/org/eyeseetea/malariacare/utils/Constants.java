@@ -21,7 +21,11 @@ public class Constants {
             IMAGES_6 = 12,
             PHONE = 13,
             IMAGES_3 = 14,
-            IMAGES_5 = 15;
+            IMAGES_5 = 15,
+            COUNTER = 16,
+            WARNING = 17,
+            REMINDER = 18;
+
 
     public static final List<Integer> QUESTION_TYPES_WITH_OPTIONS = Arrays.asList(
             DROPDOWN_LIST,
@@ -60,12 +64,8 @@ public class Constants {
     public static final int SURVEY_IN_PROGRESS = 0,
             SURVEY_COMPLETED = 1,
             SURVEY_SENT = 2,
-            SURVEY_HIDE = 3;
-
-    //############# OPERATION TYPE ##############
-    public static final int OPERATION_TYPE_MATCH = 0,
-            OPERATION_TYPE_PARENT = 1,
-            OPERATION_TYPE_OTHER = 2;
+            SURVEY_HIDE = 3,
+            SURVEY_CONFLICT = 4;
 
     public static final String FONTS_XSMALL = "xsmall",
             FONTS_SMALL = "small",
@@ -87,6 +87,7 @@ public class Constants {
             QUESTION_RELATION_OPERATION_IDX = "QuestionRelation_operation",
             QUESTION_RELATION_QUESTION_IDX = "QuestionRelation_id_question",
             MATCH_QUESTION_RELATION_IDX = "Match_id_question_relation",
+            QUESTION_THRESHOLDS_QUESTION_IDX = "QuestionThreshold_id_question",
             VALUE_IDX = "Value_id_survey";
 
     public static final String DHIS_API_SERVER = "2.20",

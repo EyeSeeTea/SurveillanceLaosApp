@@ -13,6 +13,7 @@
 <string name="dialog_title_delete_survey">"Borrar evaluación"</string>
 <string name="dialog_info_delete_survey">"¿Seguro que desea borrar la evaluación?"</string>
 <string name="dialog_title_error">"Error"</string>
+<string name="toast_push_is_pushing">"Enviando encuestas antes de entrar en ajustes"</string>
 <string name="create_info_organization_unit">"Unidad de organización"</string>
 <string name="assessment_sent_date">"Fecha de llenado"</string>
 <string name="assessment_title_header">"Pendiente de enviar"</string>
@@ -73,6 +74,7 @@
 <string name="create_info_zone">"Zona"</string>
 <string name="dhis_url_error">"DHIS URL Error"</string>
 <string name="dhis_url_error_bad_version">"Servidor DHIS no compatible (soportados 2.20, 2.21, 2.22 )"</string>
+<string name="dhis_url_error_generic">"Error en el servidor Dhis. El servidor no esta respondiendo correctamente"</string>
 <string name="dhis_url_error_bad_credentials">"Esta app no esta autorizada en el servidor indicado"</string>
 <string name="settings_menu_monitoring">"Monitorizar"</string>
 <string name="monitor_label">"Por favor, selecciona un periodo de tiempo"</string>
@@ -116,4 +118,6 @@
 <string name="font_size_level2_title">"Medio"</string>
 <string name="font_size_level3_title">"Grande"</string>
 <string name="font_size_level4_title">"Extra grande"</string>
+<string name="option_counter">"Repeticiones: "</string>
+<string name="option_confirm">"Confirmar opción"</string>
 </resources>
