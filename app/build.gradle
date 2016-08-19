@@ -28,6 +28,10 @@ android {
     buildToolsVersion "21.0.1"
 
     defaultConfig {
+<<<<<<< HEAD
+=======
+        applicationId 'org.eyeseetea.surveillance_kh'
+>>>>>>> parent of 94d6412... logo with bb introduced, add (bb) to version name and applicationId changed to contain _bb
         minSdkVersion 15
         targetSdkVersion 21
         versionCode 10
