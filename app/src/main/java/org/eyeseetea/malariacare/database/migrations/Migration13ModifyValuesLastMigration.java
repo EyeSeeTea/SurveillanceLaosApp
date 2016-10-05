@@ -16,15 +16,15 @@ import java.io.IOException;
 /**
  * Created by idelcano on 03/08/2016.
  */
-@Migration(version = 9, databaseName = AppDatabase.NAME)
-public class Migration9UpdateOptionAndQuestions extends BaseMigration {
+@Migration(version = 13, databaseName = AppDatabase.NAME)
+public class Migration13ModifyValuesLastMigration extends BaseMigration {
 
-    private static String TAG=".Migration9";
+    private static String TAG=".Migration13";
 
-    private static Migration9UpdateOptionAndQuestions instance;
+    private static Migration13ModifyValuesLastMigration instance;
     private boolean postMigrationRequired;
 
-    public Migration9UpdateOptionAndQuestions() {
+    public Migration13ModifyValuesLastMigration() {
         super();
         instance = this;
         postMigrationRequired=false;
@@ -54,9 +54,9 @@ public class Migration9UpdateOptionAndQuestions extends BaseMigration {
         //Data? Add new default data
         if(instance.hasData()) {
             try {
+                PopulateDB.addOptionAttributes(PreferencesState.getInstance().getContext().getAssets());
                 PopulateDB.updateOptionNames(PreferencesState.getInstance().getContext().getAssets());
-                PopulateDB.updateQuestionNameAndForms(PreferencesState.getInstance().getContext().getAssets());
-
+                PopulateDB.updateQuestions(PreferencesState.getInstance().getContext().getAssets());
             } catch (IOException e) {
                 e.printStackTrace();
             }
