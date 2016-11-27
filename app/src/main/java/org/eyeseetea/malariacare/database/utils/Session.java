@@ -24,30 +24,31 @@ import android.content.SharedPreferences;
 import android.location.Location;
 import android.preference.PreferenceManager;
 import android.util.Log;
-import android.widget.ListView;
 
 import org.eyeseetea.malariacare.R;
 import org.eyeseetea.malariacare.database.model.Survey;
 import org.eyeseetea.malariacare.database.model.User;
+import org.eyeseetea.malariacare.domain.entity.Credentials;
 import org.eyeseetea.malariacare.layout.adapters.dashboard.IDashboardAdapter;
 import org.eyeseetea.malariacare.phonemetadata.PhoneMetaData;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * An application scoped object that stores transversal information:
- *  -User
- *  -Survey
- *  -..
+ * -User
+ * -Survey
+ * -..
  */
 public class Session {
 
-    private final static String TAG=".Session";
-
+    /**
+     * Lock to protect the inclusion or extraction of any value in a concurrent way
+     */
+    final public static ReentrantReadWriteLock valuesLock = new ReentrantReadWriteLock();
+    private final static String TAG = ".Session";
     /**
      * The current selected survey
      */
@@ -56,26 +57,27 @@ public class Session {
      * The current user
      */
     private static User user;
-
+    /**
+     * The current credentials
+     */
+    private static Credentials sCredentials;
     /**
      * The current location
      */
     private static Location location;
-
     /**
      * The current phone metadata
      */
     private static PhoneMetaData phoneMetaData;
-
     /**
-     * Lock to protect the inclusion or extraction of any value in a concurrent way
+     * The maximum total of questions in programm
      */
-    final public static ReentrantReadWriteLock valuesLock = new ReentrantReadWriteLock();
+    private static int maxTotalQuestions;
 
     /**
      * Map that holds non serializable results from services
      */
-    private static Map<String,Object> serviceValues=new HashMap<>();
+    private static Map<String, Object> serviceValues = new HashMap<>();
 
     //FIXME Probably no longer required
     private static IDashboardAdapter adapterUncompleted, adapterCompleted;
@@ -86,6 +88,14 @@ public class Session {
 
     public static synchronized void setSurvey(Survey survey) {
         Session.survey = survey;
+    }
+
+    public static Credentials getCredentials() {
+        return sCredentials;
+    }
+
+    public static void setCredentials(Credentials credentials) {
+        sCredentials = credentials;
     }
 
     public static User getUser() {
@@ -112,34 +122,33 @@ public class Session {
         Session.adapterCompleted = adapterCompleted;
     }
 
-    public static synchronized void setFullOfUnsent(Context context){
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+    public static synchronized void setFullOfUnsent(Context context) {
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(
+                context);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putBoolean(context.getResources().getString(R.string.fullOfUnsent), true);
         editor.commit();
     }
 
-    public static synchronized void setNotFullOfUnsent(Context context){
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
+    public static synchronized void setNotFullOfUnsent(Context context) {
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(
+                context);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.putBoolean(context.getResources().getString(R.string.fullOfUnsent), false);
         editor.commit();
     }
 
-    public static boolean isNotFullOfUnsent(Context context){
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        return !sharedPreferences.getBoolean(context.getResources().getString(R.string.fullOfUnsent),false);
+    public static boolean isNotFullOfUnsent(Context context) {
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(
+                context);
+        return !sharedPreferences.getBoolean(
+                context.getResources().getString(R.string.fullOfUnsent), false);
     }
 
     /**
      * Closes the current session when the user logs out
      */
-    public static void logout(){
-        List<Survey> surveys = Survey.getAllUnsentSurveys();
-        for (Survey survey : surveys) {
-            survey.delete();
-        }
-        Session.getUser().delete();
+    public static void logout() {
         Session.setUser(null);
         Session.setSurvey(null);
         Session.setAdapterUncompleted(null);
@@ -148,11 +157,11 @@ public class Session {
 
     /**
      * Puts a pair key/value into a shared map.
-     * Used to share values that are not serializable and thus cannot be put into an intent (domains and so).
-     * @param key
-     * @param value
+     * Used to share values that are not serializable and thus cannot be put into an intent
+     * (domains
+     * and so).
      */
-    public static void putServiceValue(String key, Object value){
+    public static void putServiceValue(String key, Object value) {
         valuesLock.writeLock().lock();
         try {
             Log.i(TAG, "putServiceValue(" + key + ", " + value.toString() + ")");
@@ -164,10 +173,8 @@ public class Session {
 
     /**
      * Pops the value of the given key out of the map.
-     * @param key
-     * @return
      */
-    public static Object popServiceValue(String key){
+    public static Object popServiceValue(String key) {
         return serviceValues.get(key);
 //        return serviceValues.remove(key);
     }
@@ -176,7 +183,7 @@ public class Session {
      * Clears the service values in memory.
      * Used for clean testing.
      */
-    public static void clearServiceValues(){
+    public static void clearServiceValues() {
 
         serviceValues.clear();
     }
@@ -189,10 +196,19 @@ public class Session {
         Session.location = location;
     }
 
-    public static PhoneMetaData getPhoneMetaData(){return phoneMetaData;}
+    public static PhoneMetaData getPhoneMetaData() {
+        return phoneMetaData;
+    }
 
     public static synchronized void setPhoneMetaData(PhoneMetaData phoneMetaData) {
         Session.phoneMetaData = phoneMetaData;
     }
 
+    public static int getMaxTotalQuestions() {
+        return maxTotalQuestions;
+    }
+
+    public static synchronized void setMaxTotalQuestions(int maxTotalQuestions) {
+        Session.maxTotalQuestions = maxTotalQuestions;
+    }
 }

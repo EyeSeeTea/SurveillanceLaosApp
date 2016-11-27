@@ -36,68 +36,61 @@ import java.util.List;
 @Table(databaseName = AppDatabase.NAME)
 public class OptionAttribute extends BaseModel {
 
-    @Column
-    @PrimaryKey(autoincrement = true)
-    long id_option_attribute;
-
-    @Column
-    String background_colour;
-
-    @Column
-    String path;
-
-    @Column
-    int horizontal_alignment;
-
-    @Column
-    int vertical_alignment;
-
-    @Column
-    int text_size;
-
     /**
      * Constant that reflects a left alignment
      */
-    public static final int HORIZONTAL_ALIGNMENT_LEFT=0;
+    public static final int HORIZONTAL_ALIGNMENT_LEFT = 0;
     /**
      * Constant that reflects a right alignment
      */
-    public static final int HORIZONTAL_ALIGNMENT_CENTER=1;
-
+    public static final int HORIZONTAL_ALIGNMENT_CENTER = 1;
     /**
      * Constant that reflects a center alignment
      */
-    public static final int HORIZONTAL_ALIGNMENT_RIGHT=2;
+    public static final int HORIZONTAL_ALIGNMENT_RIGHT = 2;
     /**
      * Constant that reflects a not applicable horizontal alignment
      */
-    public static final int HORIZONTAL_ALIGNMENT_NONE=3;
+    public static final int HORIZONTAL_ALIGNMENT_NONE = 3;
     /**
      * Constant that reflects a DEFAULT alignment
      */
-    public static final int DEFAULT_HORIZONTAL_ALIGNMENT=HORIZONTAL_ALIGNMENT_NONE;
-
+    public static final int DEFAULT_HORIZONTAL_ALIGNMENT = HORIZONTAL_ALIGNMENT_NONE;
     /**
      * Constant that reflects a top alignment
      */
-    public static final int VERTICAL_ALIGNMENT_TOP=0;
+    public static final int VERTICAL_ALIGNMENT_TOP = 0;
     /**
      * Constant that reflects a middle alignment
      */
-    public static final int VERTICAL_ALIGNMENT_MIDDLE=1;
-
+    public static final int VERTICAL_ALIGNMENT_MIDDLE = 1;
     /**
      * Constant that reflects a bottom alignment
      */
-    public static final int VERTICAL_ALIGNMENT_BOTTOM=2;
+    public static final int VERTICAL_ALIGNMENT_BOTTOM = 2;
     /**
      * Constant that reflects a not applicable vertical alignment
      */
-    public static final int VERTICAL_ALIGNMENT_NONE=3;
+    public static final int VERTICAL_ALIGNMENT_NONE = 3;
     /**
      * Constant that reflects a DEFAULT alignment
      */
-    public static final int DEFAULT_VERTICAL_ALIGNMENT=VERTICAL_ALIGNMENT_NONE;
+    public static final int DEFAULT_VERTICAL_ALIGNMENT = VERTICAL_ALIGNMENT_NONE;
+    @Column
+    @PrimaryKey(autoincrement = true)
+    long id_option_attribute;
+    @Column
+    String background_colour;
+    @Column
+    String path;
+    @Column
+    int horizontal_alignment;
+    @Column
+    int vertical_alignment;
+    @Column
+    int text_size;
+    @Column
+    int default_option;
 
     public OptionAttribute() {
     }
@@ -109,6 +102,13 @@ public class OptionAttribute extends BaseModel {
 
     public static List<OptionAttribute> getAllOptionAttributes() {
         return new Select().from(OptionAttribute.class).queryList();
+    }
+
+    public static OptionAttribute findById(Long id) {
+        return new Select()
+                .from(OptionAttribute.class)
+                .where(Condition.column(OptionAttribute$Table.ID_OPTION_ATTRIBUTE).eq(
+                        id)).querySingle();
     }
 
     public long getId_option_attribute() {
@@ -147,6 +147,14 @@ public class OptionAttribute extends BaseModel {
         this.text_size = size;
     }
 
+    public int getDefaultOption() {
+        return default_option;
+    }
+
+    public void setDefaultOption(int default_option) {
+        this.default_option = default_option;
+    }
+
     public int getHorizontal_alignment() {
         return horizontal_alignment;
     }
@@ -163,55 +171,58 @@ public class OptionAttribute extends BaseModel {
         this.vertical_alignment = vertical_alignment;
     }
 
-    public boolean hasHorizontalAlignment(){
-        return horizontal_alignment!=HORIZONTAL_ALIGNMENT_NONE;
+    public boolean hasHorizontalAlignment() {
+        return horizontal_alignment != HORIZONTAL_ALIGNMENT_NONE;
     }
 
-    public boolean hasVerticalAlignment(){
-        return vertical_alignment!=VERTICAL_ALIGNMENT_NONE;
-    }
-    public boolean isHorizontalCenter(){
-        return horizontal_alignment==HORIZONTAL_ALIGNMENT_CENTER;
+    public boolean hasVerticalAlignment() {
+        return vertical_alignment != VERTICAL_ALIGNMENT_NONE;
     }
 
-    public boolean isHorizontalLeft(){
-        return horizontal_alignment==HORIZONTAL_ALIGNMENT_LEFT;
+    public boolean isHorizontalCenter() {
+        return horizontal_alignment == HORIZONTAL_ALIGNMENT_CENTER;
     }
 
-    public boolean isHorizontalRight(){
-        return horizontal_alignment==HORIZONTAL_ALIGNMENT_RIGHT;
+    public boolean isHorizontalLeft() {
+        return horizontal_alignment == HORIZONTAL_ALIGNMENT_LEFT;
     }
 
-    public boolean isVerticalBottom(){
-        return vertical_alignment==VERTICAL_ALIGNMENT_BOTTOM;
+    public boolean isHorizontalRight() {
+        return horizontal_alignment == HORIZONTAL_ALIGNMENT_RIGHT;
     }
 
-    public boolean isVerticalTop(){
-        return vertical_alignment==VERTICAL_ALIGNMENT_TOP;
+    public boolean isVerticalBottom() {
+        return vertical_alignment == VERTICAL_ALIGNMENT_BOTTOM;
     }
 
-    public boolean isVerticalMiddle(){
-        return vertical_alignment==VERTICAL_ALIGNMENT_MIDDLE;
+    public boolean isVerticalTop() {
+        return vertical_alignment == VERTICAL_ALIGNMENT_TOP;
+    }
+
+    public boolean isVerticalMiddle() {
+        return vertical_alignment == VERTICAL_ALIGNMENT_MIDDLE;
     }
 
     /**
      * The option gravity is the result of the (vertical | horizontal) gravity.
      */
-    public int getGravity(){
-        int verticalGravity=Gravity.CENTER_HORIZONTAL;
-        int horizontalGravity=Gravity.CENTER_VERTICAL;
-        if(isHorizontalRight())
-            horizontalGravity= Gravity.RIGHT;
-        else if(isHorizontalLeft())
-            horizontalGravity= Gravity.LEFT;
-        else if(isHorizontalCenter())
-            horizontalGravity= Gravity.CENTER_HORIZONTAL;
-        if(isVerticalBottom())
-            verticalGravity=Gravity.BOTTOM;
-        else if(isVerticalTop())
-            verticalGravity=Gravity.TOP;
-        else if(isVerticalMiddle())
-            verticalGravity=Gravity.CENTER_VERTICAL;
+    public int getGravity() {
+        int verticalGravity = Gravity.CENTER_HORIZONTAL;
+        int horizontalGravity = Gravity.CENTER_VERTICAL;
+        if (isHorizontalRight()) {
+            horizontalGravity = Gravity.RIGHT;
+        } else if (isHorizontalLeft()) {
+            horizontalGravity = Gravity.LEFT;
+        } else if (isHorizontalCenter()) {
+            horizontalGravity = Gravity.CENTER_HORIZONTAL;
+        }
+        if (isVerticalBottom()) {
+            verticalGravity = Gravity.BOTTOM;
+        } else if (isVerticalTop()) {
+            verticalGravity = Gravity.TOP;
+        } else if (isVerticalMiddle()) {
+            verticalGravity = Gravity.CENTER_VERTICAL;
+        }
 
         return (verticalGravity | horizontalGravity);
     }
@@ -226,8 +237,12 @@ public class OptionAttribute extends BaseModel {
         if (id_option_attribute != that.id_option_attribute) return false;
         if (horizontal_alignment != that.horizontal_alignment) return false;
         if (vertical_alignment != that.vertical_alignment) return false;
-        if (background_colour != null ? !background_colour.equals(that.background_colour) : that.background_colour != null)
+        if (text_size != that.text_size) return false;
+        if (default_option != that.default_option) return false;
+        if (background_colour != null ? !background_colour.equals(that.background_colour)
+                : that.background_colour != null) {
             return false;
+        }
         return path != null ? path.equals(that.path) : that.path == null;
 
     }
@@ -239,6 +254,8 @@ public class OptionAttribute extends BaseModel {
         result = 31 * result + (path != null ? path.hashCode() : 0);
         result = 31 * result + horizontal_alignment;
         result = 31 * result + vertical_alignment;
+        result = 31 * result + text_size;
+        result = 31 * result + default_option;
         return result;
     }
 
@@ -248,14 +265,10 @@ public class OptionAttribute extends BaseModel {
                 "id_option_attribute=" + id_option_attribute +
                 ", background_colour='" + background_colour + '\'' +
                 ", path='" + path + '\'' +
-                ", horizontal_alignment='" + horizontal_alignment + '\'' +
-                ", vertical_alignment='" + vertical_alignment + '\'' +
+                ", horizontal_alignment=" + horizontal_alignment +
+                ", vertical_alignment=" + vertical_alignment +
+                ", text_size=" + text_size +
+                ", default_option=" + default_option +
                 '}';
-    }
-
-    public static OptionAttribute findById(Long id) {
-        return new Select()
-                .from(OptionAttribute.class)
-                .where(Condition.column(OptionAttribute$Table.ID_OPTION_ATTRIBUTE).eq(id)).querySingle();
     }
 }
