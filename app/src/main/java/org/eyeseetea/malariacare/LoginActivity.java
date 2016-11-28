@@ -19,15 +19,16 @@
 
 package org.eyeseetea.malariacare;
 
-import android.app.LoaderManager.LoaderCallbacks;
-import android.content.Intent;
-import android.content.Loader;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
-import android.database.Cursor;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.util.Log;
-import android.view.MenuItem;
+import android.text.Html;
+import android.text.SpannableString;
+import android.text.method.LinkMovementMethod;
+import android.text.util.Linkify;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -35,55 +36,63 @@ import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 
+import com.squareup.okhttp.HttpUrl;
 import com.squareup.otto.Subscribe;
 
 import org.eyeseetea.malariacare.database.utils.PreferencesState;
+import org.eyeseetea.malariacare.domain.entity.Credentials;
+import org.eyeseetea.malariacare.domain.usecase.LoginUseCase;
 import org.eyeseetea.malariacare.network.ServerAPIController;
+import org.eyeseetea.malariacare.strategies.LoginActivityStrategy;
+import org.eyeseetea.malariacare.utils.Utils;
+import org.hisp.dhis.android.sdk.controllers.DhisService;
+import org.hisp.dhis.android.sdk.events.UiEvent;
 import org.hisp.dhis.android.sdk.job.NetworkJob;
 import org.hisp.dhis.android.sdk.persistence.preferences.ResourceType;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 
 /**
  * Login Screen.
  * It shows only when the user has an open session.
  */
-public class LoginActivity extends org.hisp.dhis.android.sdk.ui.activities.LoginActivity implements LoaderCallbacks<Cursor> {
+public class LoginActivity extends org.hisp.dhis.android.sdk.ui.activities.LoginActivity {
 
+    public static final String PULL_REQUIRED = "PULL_REQUIRED";
+    public static final String DEFAULT_USER = "";
+    public static final String DEFAULT_PASSWORD = "";
     private static final String TAG = ".LoginActivity";
-    /**
-     * DHIS server URL
-     */
+    public LoginUseCase mLoginUseCase = new LoginUseCase(this);
+    public LoginActivityStrategy mLoginActivityStrategy = new LoginActivityStrategy(this);
+    EditText serverText;
+    EditText usernameEditText;
+    EditText passwordEditText;
     private String serverUrl;
-
-    /**
-     * DHIS username account
-     */
     private String username;
-
-    /**
-     * DHIS password (required since push is done natively instead of using sdk)
-     */
     private String password;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        mLoginActivityStrategy.onCreate();
+
         initDataDownloadPeriodDropdown();
 
         //Populate server with the current value
-        EditText serverText = (EditText) findViewById(org.hisp.dhis.android.sdk.R.id.server_url);
+        serverText = (EditText) findViewById(R.id.server_url);
         serverText.setText(ServerAPIController.getServerUrl());
 
         //Username, Password blanks to force real login
-        EditText usernameEditText = (EditText) findViewById(R.id.username);
-        usernameEditText.setText("");
-        EditText passwordEditText = (EditText) findViewById(R.id.password);
-        passwordEditText.setText("");
+        usernameEditText = (EditText) findViewById(R.id.username);
+        usernameEditText.setText(DEFAULT_USER);
+        passwordEditText = (EditText) findViewById(R.id.password);
+        passwordEditText.setText(DEFAULT_PASSWORD);
     }
 
     private void initDataDownloadPeriodDropdown() {
-        if(!BuildConfig.loginDataDownloadPeriod) {
+        if (!BuildConfig.loginDataDownloadPeriod) {
             return;
         }
         //Add left text for the spinner "title"
@@ -98,7 +107,8 @@ public class LoginActivity extends org.hisp.dhis.android.sdk.ui.activities.Login
         dataLimitOptions.add(getString(R.string.last_6_weeks));
         dataLimitOptions.add(getString(R.string.last_6_months));
 
-        final ArrayAdapter<String> spinnerArrayAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, dataLimitOptions);
+        final ArrayAdapter<String> spinnerArrayAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, dataLimitOptions);
         spinnerArrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
         //add spinner
@@ -107,15 +117,17 @@ public class LoginActivity extends org.hisp.dhis.android.sdk.ui.activities.Login
         spinner.setAdapter(spinnerArrayAdapter);
 
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            public void onItemSelected(AdapterView<?> parent, View view,int pos, long id) {
-                PreferencesState.getInstance().setDataLimitedByDate(spinnerArrayAdapter.getItem(pos).toString());
+            public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+                PreferencesState.getInstance().setDataLimitedByDate(
+                        spinnerArrayAdapter.getItem(pos).toString());
             }
+
             public void onNothingSelected(AdapterView<?> parent) {
             }
         });
         //select the selected option or default no data option
         String dateLimit = PreferencesState.getInstance().getDataLimitedByDate();
-        if(dateLimit.equals("")) {
+        if (dateLimit.equals("")) {
             spinner.setSelection(spinnerArrayAdapter.getPosition(getString(R.string.no_data)));
         } else {
             spinner.setSelection(spinnerArrayAdapter.getPosition(dateLimit));
@@ -123,135 +135,112 @@ public class LoginActivity extends org.hisp.dhis.android.sdk.ui.activities.Login
     }
 
     @Override
-    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        return null;
+    public void login(String serverUrl, String username, String password) {
+        //This method is overriden to capture credentials data
+        this.serverUrl = serverUrl;
+        this.username = username;
+        this.password = password;
+
+
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        if (!sharedPreferences.getBoolean(getString(R.string.eula_accepted), false)) {
+            askEula(R.string.settings_menu_eula, R.raw.eula, LoginActivity.this);
+        } else {
+            loginToDhis(serverUrl, username, password);
+        }
     }
 
-    @Override
-    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
 
+    /**
+     * Shows an alert dialog asking for acceptance of the EULA terms. If ok calls login function,
+     * do
+     * nothing otherwise
+     */
+    public void askEula(int titleId, int rawId, final Context context) {
+        InputStream message = context.getResources().openRawResource(rawId);
+        String stringMessage = Utils.convertFromInputStreamToString(message).toString();
+        final SpannableString linkedMessage = new SpannableString(Html.fromHtml(stringMessage));
+        Linkify.addLinks(linkedMessage, Linkify.EMAIL_ADDRESSES | Linkify.WEB_URLS);
+
+        AlertDialog dialog = new AlertDialog.Builder(context)
+                .setTitle(context.getString(titleId))
+                .setMessage(linkedMessage)
+                .setNeutralButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        rememberEulaAccepted(context);
+                        loginToDhis(serverUrl, username, password);
+                    }
+                })
+                .setNegativeButton(android.R.string.no, null).create();
+
+        dialog.show();
+
+        ((TextView) dialog.findViewById(android.R.id.message)).setMovementMethod(
+                LinkMovementMethod.getInstance());
     }
 
-    @Override
-    public void onLoaderReset(Loader<Cursor> loader) {
-
+    /**
+     * Save a preference to remember that EULA was already accepted
+     */
+    public void rememberEulaAccepted(Context context) {
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(
+                context);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(getString(R.string.eula_accepted), true);
+        editor.commit();
     }
 
-    @Override
-    public void onClick(View v) {
-        // Save dhis URL and establish in preferences, so it will be used to make the pull
-        EditText serverEditText = (EditText) findViewById(R.id.server_url);
-        PreferencesState.getInstance().saveStringPreference(R.string.dhis_url, serverEditText.getText().toString());
-        super.onClick(v);
+    /**
+     * User SDK function to login
+     */
+    public void loginToDhis(String serverUrl, String username, String password) {
+        //Delegate real login attempt to parent in sdk
+        super.login(serverUrl, username, password);
+    }
+
+    /**
+     * This logout is called from the success user autentication, and try to login in the server
+     * with the correct userdata.
+     */
+    @Subscribe
+    public void onLogoutFinished(UiEvent uiEvent) {
+        //No event or not a logout event -> done
+        if (uiEvent == null || !uiEvent.getEventType().equals(UiEvent.UiEventType.USER_LOG_OUT)) {
+            return;
+        }
+        HttpUrl serverUri = HttpUrl.parse(serverUrl);
+        DhisService.logInUser(serverUri, ServerAPIController.getSDKCredentials());
     }
 
     @Subscribe
     public void onLoginFinished(NetworkJob.NetworkJobResult<ResourceType> result) {
-        if(result!=null && result.getResourceType().equals(ResourceType.USERS)) {
-            if(result.getResponseHolder().getApiException() == null) {
-                goSettingsWithRightExtras();
+        if (result != null && result.getResourceType().equals(ResourceType.USERS)) {
+            if (result.getResponseHolder().getApiException() == null) {
+                Credentials credentials = new Credentials(serverUrl, username, password);
+                mLoginUseCase.execute(credentials);
+                //The first login is only to authenticate the user, and is need logout from the
+                // sdk and login with the correct user/password.
+                if (mLoginUseCase.isLogoutNeeded(credentials)) {
+                    username = DEFAULT_USER;
+                    password = DEFAULT_PASSWORD;
+                    //The first login (user authentication) calls this
+                    DhisService.logOutUser(this);
+                } else {
+                    mLoginActivityStrategy.finishAndGo();
+                }
             } else {
                 onLoginFail(result.getResponseHolder().getApiException());
             }
         }
     }
 
-    private void goSettingsWithRightExtras(){
-
-        Intent intent = new Intent(LoginActivity.this,SettingsActivity.class);
-        intent = propagateExtraAndResult(intent);
-
-        finish();
-        if(!getIntent().getBooleanExtra(SettingsActivity.SETTINGS_EULA_ACCEPTED, false))
-            startActivity(intent);
-    }
-
-    private Intent propagateExtraAndResult(Intent intent){
-        if(getIntent().getBooleanExtra(SettingsActivity.SETTINGS_CHANGING_ORGUNIT,false)){
-            Log.i(TAG, "propagateExtraAndResult -> Changing orgunit");
-            intent.putExtra(SettingsActivity.SETTINGS_CHANGING_ORGUNIT,true);
-        }
-
-        if(getIntent().getBooleanExtra(SettingsActivity.SETTINGS_CHANGING_SERVER,false)){
-            Log.i(TAG, "propagateExtraAndResult -> Changing server");
-            intent.putExtra(SettingsActivity.SETTINGS_CHANGING_SERVER,true);
-        }
-
-        if(getIntent().getBooleanExtra(SettingsActivity.SETTINGS_EULA_ACCEPTED, false)){
-            Log.i(TAG, "propagateExtraAndResult -> EULA accepted, Server overwrite from "+PreferencesState.getInstance().getDhisURL() +" to "+getUserIntroducedServer());
-            PreferencesState.getInstance().setDhisURL(getUserIntroducedServer());
-            setResult(RESULT_OK, intent);
-        } else {
-            if (isEulaAccepted() && !getServerFromPreferences().equals(getUserIntroducedServer())) {
-                Log.i(TAG, "propagateExtraAndResult -> Server changed from "+PreferencesState.getInstance().getDhisURL() +" to "+getUserIntroducedServer());
-                //If the user change the server, the getServerFromPreferents have the old server value only before to call reloadPreferences()
-                PreferencesState.getInstance().reloadPreferences();
-                PreferencesState.getInstance().setIsNewServerUrl(true);
-            }
-        }
-
-        intent.putExtra(SettingsActivity.LOGIN_BEFORE_CHANGE_DONE,true);
-        return intent;
-    }
-
-    /**
-     * Check whether the EULA has already been accepted by the user. When the user accepts the EULA,
-     * a preference is set so the app will remind between different executions
-     * @return
-     */
-    private boolean isEulaAccepted(){
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        return sharedPreferences.getBoolean(getApplicationContext().getResources().getString(R.string.eula_accepted), false);
-    }
-
-    /**
-     * Get from the server textfield what the user introduced
-     * @return
-     */
-    private String getUserIntroducedServer(){
-        EditText serverEditText = (EditText) findViewById(R.id.server_url);
-        return serverEditText.getText().toString();
-    }
-
-    /**
-     * Get from the preferences the server setting
-     * @return
-     */
-    private String getServerFromPreferences(){
-        return PreferencesState.getInstance().getDhisURL();
-    }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-
-        int id = item.getItemId();
-
-        switch (id) {
-            case android.R.id.home:
-                onBackPressed();
-                break;
-            default:
-                return super.onOptionsItemSelected(item);
-        }
-        return true;
+    public void onBackPressed() {
+        mLoginActivityStrategy.onBackPressed();
     }
 
-    /**
-     * Every BaseActivity(Details, Create, Survey) goes back to DashBoard
-     */
-    public void onBackPressed(){
-        finishAndGo(DashboardActivity.class);
-    }
-
-    /**
-     * Finish current activity and launches an activity with the given class
-     * @param targetActivityClass Given target activity class
-     */
-    public void finishAndGo(Class targetActivityClass){
-        Intent targetActivityIntent = new Intent(this,targetActivityClass);
-        finish();
-        startActivity(targetActivityIntent);
-    }
 }
 
 
