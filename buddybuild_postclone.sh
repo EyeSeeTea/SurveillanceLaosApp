@@ -9,9 +9,7 @@ sh ${gitPath}/generate_last_commit.sh
 
 # Use the EST SDK branch
 cd sdk
-git checkout 2.22_EyeSeeTea
+git checkout 2.25_EyeSeeTea
 cd -
-cd DBFlowORM
-git checkout update_to_gradle_2.0
-cd -
-cp -a DBFlowORM sdk
+mkdir app/src/cambodia/res/raw
+cp ${BUDDYBUILD_SECURE_FILES}/config_laos.json app/src/laos/res/raw/config.json

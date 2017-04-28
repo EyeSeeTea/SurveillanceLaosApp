@@ -1,5 +1,6 @@
 package org.eyeseetea.malariacare.fragments;
 
+import android.app.Activity;
 import android.app.Fragment;
 import android.os.Bundle;
 import android.util.Log;
@@ -10,22 +11,23 @@ import android.widget.BaseAdapter;
 import android.widget.ListView;
 
 import org.eyeseetea.malariacare.R;
-import org.eyeseetea.malariacare.database.model.QuestionRelation;
-import org.eyeseetea.malariacare.database.model.Survey;
-import org.eyeseetea.malariacare.database.model.Value;
-import org.eyeseetea.malariacare.database.utils.Session;
+import org.eyeseetea.malariacare.data.database.model.QuestionRelation;
+import org.eyeseetea.malariacare.data.database.model.Survey;
+import org.eyeseetea.malariacare.data.database.model.Value;
+import org.eyeseetea.malariacare.data.database.utils.Session;
 import org.eyeseetea.malariacare.layout.adapters.dashboard.IDashboardAdapter;
 import org.eyeseetea.malariacare.layout.adapters.dashboard.ReviewScreenAdapter;
+import org.eyeseetea.malariacare.strategies.DashboardHeaderStrategy;
+import org.eyeseetea.malariacare.strategies.ReviewFragmentStrategy;
+import org.eyeseetea.malariacare.utils.Constants;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by idelcano on 09/06/2016.
- */
 public class ReviewFragment extends Fragment {
 
     public static final String TAG = ".ReviewFragment";
+    public static boolean mLoadingReviewOfSurveyWithMaxCounter;
     protected IDashboardAdapter adapter;
     LayoutInflater lInflater;
     private List<Value> values;
@@ -34,14 +36,13 @@ public class ReviewFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
-
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
         Log.d(TAG, "onCreateView");
-        this.lInflater = LayoutInflater.from(getActivity().getApplicationContext());
+        this.lInflater = LayoutInflater.from(getActivity());
         View view = inflater.inflate(R.layout.review_layout,
                 container, false);
 
@@ -74,18 +75,28 @@ public class ReviewFragment extends Fragment {
 
     private List<Value> getReviewValues() {
         List<Value> reviewValues = new ArrayList<>();
-        Survey survey = Session.getSurvey();
+        Survey survey = Session.getMalariaSurvey();
         List<Value> allValues = survey.getValuesFromDB();
         for (Value value : allValues) {
             boolean isReviewValue = true;
+            if (value.getQuestion() == null) {
+                continue;
+            }
             for (QuestionRelation questionRelation : value.getQuestion().getQuestionRelations()) {
                 if (questionRelation.isACounter() || questionRelation.isAReminder()
-                        || questionRelation.isAWarning()) {
+                        || questionRelation.isAWarning() || questionRelation.isAMatch()) {
                     isReviewValue = false;
                 }
             }
+            int output = value.getQuestion().getOutput();
+            if (output == Constants.HIDDEN
+                    || output == Constants.DYNAMIC_STOCK_IMAGE_RADIO_BUTTON) {
+                isReviewValue = false;
+            }
             if (isReviewValue) {
-                reviewValues.add(value);
+                if (ReviewFragmentStrategy.isValidValue(value)) {
+                    reviewValues.add(value);
+                }
             }
         }
         return reviewValues;
@@ -109,5 +120,9 @@ public class ReviewFragment extends Fragment {
 
         //remove spaces between rows in the listview
         listView.setDividerHeight(0);
+    }
+
+    public void reloadHeader(Activity activity) {
+        DashboardHeaderStrategy.getInstance().hideHeader(activity);
     }
 }

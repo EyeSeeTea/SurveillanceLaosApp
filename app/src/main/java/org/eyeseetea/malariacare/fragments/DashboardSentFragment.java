@@ -19,6 +19,7 @@
 
 package org.eyeseetea.malariacare.fragments;
 
+import android.app.Activity;
 import android.app.ListFragment;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -33,13 +34,14 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 
-import org.eyeseetea.malariacare.DashboardActivity;
-import org.eyeseetea.malariacare.database.model.Survey;
-import org.eyeseetea.malariacare.database.utils.PreferencesState;
-import org.eyeseetea.malariacare.database.utils.Session;
-import org.eyeseetea.malariacare.layout.adapters.dashboard.AssessmentSentAdapter;
-import org.eyeseetea.malariacare.layout.adapters.dashboard.IDashboardAdapter;
+import org.eyeseetea.malariacare.R;
+import org.eyeseetea.malariacare.data.database.model.Survey;
+import org.eyeseetea.malariacare.data.database.utils.PreferencesState;
+import org.eyeseetea.malariacare.data.database.utils.Session;
+import org.eyeseetea.malariacare.layout.adapters.dashboard.AssessmentAdapter;
+import org.eyeseetea.malariacare.layout.utils.LayoutUtils;
 import org.eyeseetea.malariacare.services.SurveyService;
+import org.eyeseetea.malariacare.strategies.DashboardHeaderStrategy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,34 +49,19 @@ import java.util.List;
 /**
  * A placeholder fragment containing a simple view.
  */
-public class DashboardSentFragment extends ListFragment {
+public class DashboardSentFragment extends ListFragment implements IDashboardFragment {
 
 
     public static final String TAG = ".SentFragment";
-    private static int index = 0;
-    protected IDashboardAdapter adapter;
+    protected AssessmentAdapter adapter;
     private SurveyReceiver surveyReceiver;
     private List<Survey> surveys;
+    private ListView mListView;
+    DashboardSentFragment mDashboardSentFragment;
 
     public DashboardSentFragment() {
-        this.adapter = Session.getAdapterCompleted();
+        mDashboardSentFragment = this;
         this.surveys = new ArrayList();
-    }
-
-    public static DashboardSentFragment newInstance(int index) {
-        DashboardSentFragment f = new DashboardSentFragment();
-
-        // Supply index input as an argument.
-        Bundle args = new Bundle();
-        args.putInt("index", index);
-        f.setArguments(args);
-
-        return f;
-    }
-
-
-    public int getShownIndex() {
-        return getArguments().getInt("index", 0);
     }
 
     @Override
@@ -106,7 +93,7 @@ public class DashboardSentFragment extends ListFragment {
     @Override
     public void onResume() {
         Log.d(TAG, "onResume");
-        registerSurveysReceiver();
+        registerFragmentReceiver();
         super.onResume();
     }
 
@@ -117,66 +104,23 @@ public class DashboardSentFragment extends ListFragment {
      * one in session is created.
      */
     private void initAdapter() {
-        IDashboardAdapter adapterInSession = Session.getAdapterCompleted();
-        if (adapterInSession == null) {
-            adapterInSession = new AssessmentSentAdapter(this.surveys, getActivity());
-        } else {
-            adapterInSession = adapterInSession.newInstance(this.surveys, getActivity());
-        }
-        this.adapter = adapterInSession;
-        Session.setAdapterCompleted(this.adapter);
+        this.adapter = new AssessmentAdapter(getString(R.string.sent_data),
+                this.surveys, getActivity());
     }
 
     @Override
     public void onListItemClick(ListView l, View v, int position, long id) {
         Log.d(TAG, "onListItemClick");
         super.onListItemClick(l, v, position, id);
-
-        //Discard clicks on header|footer (which is attended on newSurvey via super)
-        if (!isPositionASurvey(position)) {
-            return;
-        }
-
-        //Put selected survey in session
-        Session.setSurvey(surveys.get(position - 1));
-        // Go to SurveyActivity
-        DashboardActivity.dashboardActivity.openSentSurvey();
+        adapter.onClick(l, position, surveys);
     }
 
     @Override
     public void onStop() {
         Log.d(TAG, "onStop");
-        unregisterSurveysReceiver();
+        unregisterFragmentReceiver();
 
         super.onStop();
-    }
-
-    /**
-     * Checks if the given position points to a real survey instead of a footer or header of the
-     * listview.
-     *
-     * @return true|false
-     */
-    private boolean isPositionASurvey(int position) {
-        return !isPositionFooter(position) && !isPositionHeader(position);
-    }
-
-    /**
-     * Checks if the given position is the header of the listview instead of a real survey
-     *
-     * @return true|false
-     */
-    private boolean isPositionHeader(int position) {
-        return position <= 0;
-    }
-
-    /**
-     * Checks if the given position is the footer of the listview instead of a real survey
-     *
-     * @return true|false
-     */
-    private boolean isPositionFooter(int position) {
-        return position == (this.surveys.size() + 1);
     }
 
     /**
@@ -185,13 +129,25 @@ public class DashboardSentFragment extends ListFragment {
     private void initListView() {
         if (Session.isNotFullOfUnsent(getActivity())) {
             LayoutInflater inflater = LayoutInflater.from(getActivity());
-            View header = inflater.inflate(this.adapter.getHeaderLayout(), null, false);
+            View header = DashboardHeaderStrategy.getInstance().loadHeader(
+                    this.adapter.getHeaderLayout(),
+                    inflater);
             View footer = inflater.inflate(this.adapter.getFooterLayout(), null, false);
-            //TextCard title = (TextCard) getActivity().findViewById(R.id.titleCompleted);
-            //title.setText(adapter.getTitle());
-            ListView listView = getListView();
-            listView.addHeaderView(header);
-            listView.addFooterView(footer);
+
+            mListView = getListView();
+            View viewFilter = DashboardHeaderStrategy.getInstance().loadFilter(inflater);
+            if (viewFilter != null) {
+                mListView.addHeaderView(viewFilter);
+            }
+            if (header != null) {
+                mListView.addHeaderView(header);
+            }
+            View button = footer.findViewById(R.id.plusButton);
+            if (button != null) {
+                button.setVisibility(View.GONE);
+            }
+            mListView.addFooterView(footer);
+            LayoutUtils.setRowDivider(mListView);
             setListAdapter((BaseAdapter) adapter);
             setListShown(false);
         }
@@ -201,7 +157,7 @@ public class DashboardSentFragment extends ListFragment {
     /**
      * Register a survey receiver to load surveys into the listadapter
      */
-    public void registerSurveysReceiver() {
+    public void registerFragmentReceiver() {
         Log.d(TAG, "registerSurveysReceiver");
 
         if (surveyReceiver == null) {
@@ -216,8 +172,8 @@ public class DashboardSentFragment extends ListFragment {
      * Unregisters the survey receiver.
      * It really important to do this, otherwise each receiver will invoke its code.
      */
-    public void unregisterSurveysReceiver() {
-        Log.d(TAG, "unregisterSurveysReceiver");
+    public void unregisterFragmentReceiver() {
+        Log.d(TAG, "unregisterFragmentReceiver");
         if (surveyReceiver != null) {
             LocalBroadcastManager.getInstance(getActivity()).unregisterReceiver(surveyReceiver);
             surveyReceiver = null;
@@ -231,6 +187,10 @@ public class DashboardSentFragment extends ListFragment {
         this.surveys.addAll(newListSurveys);
         this.adapter.notifyDataSetChanged();
         setListShown(true);
+    }
+
+    public void reloadHeader(Activity activity) {
+        DashboardHeaderStrategy.getInstance().init(activity, R.string.tab_tag_improve);
     }
 
     public void reloadData() {
@@ -264,6 +224,7 @@ public class DashboardSentFragment extends ListFragment {
                     Session.valuesLock.readLock().unlock();
                 }
                 reloadSurveys(surveysFromService);
+                new DashboardHeaderStrategy().initFilters(mDashboardSentFragment, mListView, surveysFromService);
             }
         }
     }

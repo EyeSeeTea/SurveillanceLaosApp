@@ -21,14 +21,18 @@
             android:layout_height="match_parent"
             android:orientation="vertical">
 
-            <ImageView
+            <ImageView xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:tools="http://schemas.android.com/tools"
                 android:id="@+id/questionImage"
                 android:layout_width="match_parent"
                 android:layout_height="0px"
                 android:layout_gravity="center_horizontal"
+                android:layout_marginLeft="@dimen/question_horizontal_margin"
+                android:layout_marginRight="@dimen/question_horizontal_margin"
                 android:layout_weight="0.2"
                 android:paddingTop="@dimen/question_padding_image_top"
-                android:visibility="gone" />
+                android:visibility="gone"
+                tools:showIn="@layout/dynamic_tab_grid_question" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -40,31 +44,14 @@
 
                 <include layout="@layout/no_scrolled_table"></include>
 
-
-                <TableLayout
-                    android:id="@+id/confirm_table"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:measureWithLargestChild="false"
-                    android:visibility="gone"
-                    android:weightSum="4">
-
-                    <include layout="@layout/dynamic_tab_row_question_image" />
-
-                    <include layout="@layout/dynamic_tab_row_question_text" />
-
-                    <include layout="@layout/dynamic_tab_row_confirm_yes" />
-
-                    <include layout="@layout/dynamic_tab_row_confirm_no" />
-                </TableLayout>
-
+                <include layout="@layout/confirm_table" />
             </LinearLayout>
         </LinearLayout>
 
         <!--Question-->
     </LinearLayout>
 
-    <include layout="@layout/snakbar"></include>
+    <include layout="@layout/snackbar"></include>
     <!--Horizontal Progress bar + text-->
     <RelativeLayout
         android:id="@+id/dynamic_footer"

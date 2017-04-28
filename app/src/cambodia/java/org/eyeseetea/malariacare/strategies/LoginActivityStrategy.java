@@ -1,10 +1,12 @@
 package org.eyeseetea.malariacare.strategies;
 
 import android.content.Intent;
+import android.view.MenuItem;
 
 import org.eyeseetea.malariacare.LoginActivity;
 import org.eyeseetea.malariacare.ProgressActivity;
 import org.eyeseetea.malariacare.SettingsActivity;
+import org.eyeseetea.malariacare.domain.usecase.LoadUserAndCredentialsUseCase;
 
 public class LoginActivityStrategy extends ALoginActivityStrategy {
     public LoginActivityStrategy(LoginActivity loginActivity) {
@@ -13,11 +15,25 @@ public class LoginActivityStrategy extends ALoginActivityStrategy {
 
     @Override
     public void onBackPressed() {
-        loginActivity.onBackPressed();
+        Intent intent = new Intent(loginActivity, SettingsActivity.class);
+        loginActivity.startActivity(intent);
+    }
+
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case android.R.id.home:
+                onBackPressed();
+                return true;
+        }
+        return false;
     }
 
     @Override
     public void onCreate() {
+        LoadUserAndCredentialsUseCase loadUserAndCredentialsUseCase =
+                new LoadUserAndCredentialsUseCase(loginActivity);
+
+        loadUserAndCredentialsUseCase.execute();
     }
 
     @Override
@@ -34,5 +50,4 @@ public class LoginActivityStrategy extends ALoginActivityStrategy {
 
         loginActivity.finish();
     }
-
 }

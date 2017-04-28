@@ -24,7 +24,7 @@ import android.app.IntentService;
 import android.content.Intent;
 import android.util.Log;
 
-import org.eyeseetea.malariacare.database.utils.PreferencesState;
+import org.eyeseetea.malariacare.data.database.utils.PreferencesState;
 import org.eyeseetea.malariacare.services.strategies.PushServiceStrategy;
 
 /**
@@ -87,7 +87,6 @@ public class PushService extends IntentService {
         if (!PENDING_SURVEYS_ACTION.equals(intent.getStringExtra(SERVICE_METHOD))) {
             return;
         }
-
         mPushServiceStrategy.push();
     }
 
@@ -96,6 +95,8 @@ public class PushService extends IntentService {
     }
 
     public void onPushError(String message) {
+        PreferencesState.getInstance().setPushInProgress(false);
         Log.w(TAG, "onPushFinished error: " + message);
     }
+
 }

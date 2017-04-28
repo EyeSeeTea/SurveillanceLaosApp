@@ -20,8 +20,12 @@
 package org.eyeseetea.malariacare.layout.utils;
 
 import android.app.Activity;
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -30,23 +34,30 @@ import android.support.v7.app.ActionBar;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 
+import org.eyeseetea.malariacare.DashboardActivity;
 import org.eyeseetea.malariacare.R;
-import org.eyeseetea.malariacare.database.model.Header;
-import org.eyeseetea.malariacare.database.model.Option;
-import org.eyeseetea.malariacare.database.model.Question;
-import org.eyeseetea.malariacare.database.utils.PreferencesState;
+import org.eyeseetea.malariacare.data.database.model.Header;
+import org.eyeseetea.malariacare.data.database.model.Option;
+import org.eyeseetea.malariacare.data.database.model.Question;
+import org.eyeseetea.malariacare.data.database.utils.PreferencesState;
+import org.eyeseetea.malariacare.utils.Utils;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 /**
  * Created by Jose on 22/02/2015.
  */
-public class BaseLayoutUtils {
+public abstract class BaseLayoutUtils {
 
     public static final int[] rowBackgrounds =
             {R.drawable.background_even, R.drawable.background_odd};
@@ -97,7 +108,7 @@ public class BaseLayoutUtils {
         LayoutUtils.setActionBarLogo(actionBar);
         LayoutUtils.setActionBarText(actionBar, PreferencesState.getInstance().getOrgUnit(),
                 PreferencesState.getInstance().getContext().getResources().getString(
-                        R.string.app_name));
+                        R.string.malaria_case_based_reporting));
     }
 
     // Used to put the org unit name and the kind of survey instead of the app name
@@ -192,6 +203,100 @@ public class BaseLayoutUtils {
         }
     }
 
-    public static void setDivider(ListView listView) {
+    public static void setTabDivider(DashboardActivity dashboardActivity) {
+        //No action. This method should be created in the variant.
+    }
+
+    public static void setLineBetweenRows(ListView listView) {
+        //No action. This method should be created in the variant.
+    }
+
+    public static void setRowDivider(ListView listView) {
+        //No action. This method should be created in the variant.
+    }
+
+    public static void makeImageVisible(String path, ImageView rowImageLabelView) {
+        rowImageLabelView.setVisibility(View.VISIBLE);
+        putImageInImageView(path,
+                rowImageLabelView);
+    }
+
+
+    /**
+     * Sets a image from assets path in a imageView
+     *
+     * @param path      path from assets image
+     * @param imageView is the imageView to set the image
+     */
+    public static void putImageInImageView(String path, ImageView imageView) {
+        if (path == null || path.equals("")) {
+            return;
+        }
+        try {
+            InputStream inputStream = PreferencesState.getInstance().getContext().getAssets().open(
+                    Utils.getInternationalizedString(path));
+            Bitmap bmp = BitmapFactory.decodeStream(inputStream);
+            imageView.setImageDrawable(
+                    new BitmapDrawable(PreferencesState.getInstance().getContext().getResources(),
+                            bmp));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void putImageInImageViewDensityHight(String path, ImageView imageView) {
+        if (path == null || path.equals("")) {
+            return;
+        }
+        try {
+            InputStream ims = PreferencesState.getInstance().getContext().getAssets().open(path);
+
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inDensity = DisplayMetrics.DENSITY_HIGH;
+            Drawable drawable = Drawable.createFromResourceStream(
+                    PreferencesState.getInstance().getContext().getResources(), null, ims, null,
+                    opts);
+
+            imageView.setImageDrawable(drawable);
+            ims.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Sets a Layout Width as 50% of screen pixel
+     *
+     * @param fixed substract the fixed number from the screenwidth
+     */
+    public static void setLayoutParamsAs50Percent(View linearLayout, Context context,
+            int fixed) {
+        LinearLayout.LayoutParams layoutParamsWidth50 = new LinearLayout.LayoutParams(
+                ((getScreenWidth(context) - fixed) / 2)
+                , ViewGroup.LayoutParams.MATCH_PARENT);
+        linearLayout.setLayoutParams(layoutParamsWidth50);
+    }
+
+    private static int getScreenWidth(Context context) {
+        DisplayMetrics metrics = new DisplayMetrics();
+        WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        wm.getDefaultDisplay().getMetrics(metrics);
+        return (metrics.widthPixels);
+    }
+
+    public static void setListRowBackgroundColor(View view) {
+        //No action. This method should be created in the variant.
+    }
+
+    public static void setSurveyActionBar(ActionBar actionBar) {
+        //No action. This method should be created in the variant.
+    }
+
+    public static void setDashboardActionBar(ActionBar actionBar) {
+        //No action. This method should be created in the variant.
+    }
+
+    public static void fixRowViewBackground(View row, int position) {
+        row.setBackgroundResource(LayoutUtils.calculateBackgrounds(position));
     }
 }

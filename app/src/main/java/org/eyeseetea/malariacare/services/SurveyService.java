@@ -26,11 +26,12 @@ import android.util.Log;
 
 import com.raizlabs.android.dbflow.sql.language.Select;
 
-import org.eyeseetea.malariacare.database.model.CompositeScore;
-import org.eyeseetea.malariacare.database.model.Survey;
-import org.eyeseetea.malariacare.database.model.Tab;
-import org.eyeseetea.malariacare.database.utils.Session;
+import org.eyeseetea.malariacare.data.database.model.CompositeScore;
+import org.eyeseetea.malariacare.data.database.model.Survey;
+import org.eyeseetea.malariacare.data.database.model.Tab;
+import org.eyeseetea.malariacare.data.database.utils.Session;
 import org.eyeseetea.malariacare.layout.score.ScoreRegister;
+import org.eyeseetea.malariacare.strategies.SurveyFragmentStrategy;
 import org.eyeseetea.malariacare.utils.Constants;
 import org.eyeseetea.malariacare.utils.Utils;
 
@@ -147,22 +148,10 @@ public class SurveyService extends IntentService {
         Log.i(TAG, "reloadDashboard");
         List<Survey> surveys = Survey.getAllSurveys();
 
-        List<Survey> unsentSurveys = new ArrayList<Survey>();
-        List<Survey> sentSurveys = new ArrayList<Survey>();
-        for (Survey survey : surveys) {
-            //fixme this is to ALL_UNSENT_SURVEYS_ACTION but in the service exclusive fot
-            // ALL_UNSENT_SURVEY_ACTION we sent other list(!isSent but hide too)
-            if (!survey.isSent() && !survey.isHide() && !survey.isConflict()) {
-                Log.d(TAG, "SurveyStatusUnSent:" + survey.getStatus() + "");
-                unsentSurveys.add(survey);
-                survey.getAnsweredQuestionRatio();
-            } else if ((survey.isSent() || survey.isConflict()) && !survey.isHide()) {
-                Log.d(TAG, "SurveyStatusSentNotHide:" + survey.getStatus() + "");
-                sentSurveys.add(survey);
-            } else {
-                Log.d(TAG, "SurveyStatusSentHide:" + survey.getStatus() + "");
-            }
-        }
+        List<Survey> unsentSurveys = Survey.getAllUnsentMalariaSurveys(
+                new SurveyFragmentStrategy().getMalariaProgram());
+        List<Survey> sentSurveys = Survey.getAllSentMalariaSurveys(
+                new SurveyFragmentStrategy().getMalariaProgram());
 
         //Since intents does NOT admit NON serializable as values we use Session instead
         Session.putServiceValue(ALL_UNSENT_SURVEYS_ACTION, unsentSurveys);
@@ -178,10 +167,11 @@ public class SurveyService extends IntentService {
      * Selects all pending surveys from database
      */
     private void getAllUnsentSurveys() {
-        Log.d(TAG, "getAllUnsentSurveys (Thread:" + Thread.currentThread().getId() + ")");
+        Log.d(TAG, "getAllUnsentMalariaSurveys (Thread:" + Thread.currentThread().getId() + ")");
 
         //Select surveys from sql
-        List<Survey> surveys = Survey.getAllUnsentSurveys();
+        List<Survey> surveys = Survey.getAllUnsentMalariaSurveys(
+                new SurveyFragmentStrategy().getMalariaProgram());
         List<Survey> unsentSurveys = new ArrayList<Survey>();
 
         //Load %completion in every survey (it takes a while so it can NOT be done in UI Thread)
@@ -204,10 +194,11 @@ public class SurveyService extends IntentService {
      * Selects all sent surveys from database
      */
     private void getAllSentSurveys() {
-        Log.d(TAG, "getAllSentSurveys (Thread:" + Thread.currentThread().getId() + ")");
+        Log.d(TAG, "getAllSentMalariaSurveys (Thread:" + Thread.currentThread().getId() + ")");
 
         //Select surveys from sql
-        List<Survey> surveys = Survey.getAllSentSurveys();
+        List<Survey> surveys = Survey.getAllSentMalariaSurveys(
+                new SurveyFragmentStrategy().getMalariaProgram());
 
         //Since intents does NOT admit NON serializable as values we use Session instead
         Session.putServiceValue(ALL_SENT_SURVEYS_ACTION, surveys);
@@ -224,7 +215,8 @@ public class SurveyService extends IntentService {
         Log.d(TAG, "removeAllSentSurveys (Thread:" + Thread.currentThread().getId() + ")");
 
         //Select all sent surveys from sql and delete.
-        List<Survey> surveys = Survey.getAllSentSurveys();
+        List<Survey> surveys = Survey.getAllSentMalariaSurveys(
+                new SurveyFragmentStrategy().getMalariaProgram());
         for (int i = surveys.size() - 1; i >= 0; i--) {
             //If is over limit the survey be delete, if is in the limit the survey change the
             // state to STATE_HIDE
@@ -282,12 +274,12 @@ public class SurveyService extends IntentService {
         Log.d(TAG, "prepareSurveyInfo (Thread:" + Thread.currentThread().getId() + ")");
 
         //Get composite scores for current program & register them (scores)
-        List<CompositeScore> compositeScores = new Select().all().from(
+        List<CompositeScore> compositeScores = new Select().from(
                 CompositeScore.class).queryList();
         ScoreRegister.registerCompositeScores(compositeScores);
 
         //Get tabs for current program & register them (scores)
-        List<Tab> tabs = new Select().all().from(Tab.class).queryList();
+        List<Tab> tabs = new Select().from(Tab.class).queryList();
         ScoreRegister.registerTabScores(tabs);
 
         //Since intents does NOT admit NON serializable as values we use Session instead

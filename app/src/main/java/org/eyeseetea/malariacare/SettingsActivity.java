@@ -34,10 +34,13 @@ import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.util.DisplayMetrics;
 
-import org.eyeseetea.malariacare.database.utils.PreferencesState;
+import org.eyeseetea.malariacare.data.database.utils.PreferencesState;
 import org.eyeseetea.malariacare.strategies.SettingsActivityStrategy;
+import org.eyeseetea.malariacare.utils.Utils;
 import org.eyeseetea.malariacare.views.AutoCompleteEditTextPreference;
+import org.eyeseetea.sdk.presentation.styles.FontStyle;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -56,6 +59,12 @@ import java.util.Locale;
 public class SettingsActivity extends PreferenceActivity implements
         SharedPreferences.OnSharedPreferenceChangeListener {
     public static final String IS_LOGIN_DONE = "IS_LOGIN_DONE";
+
+    /**
+     * Extra param to annotate the activity to return after settings
+     */
+    public static final String SETTINGS_CALLER_ACTIVITY = "SETTINGS_CALLER_ACTIVITY";
+
     /**
      * Determines whether to always show the simplified settings UI, where
      * settings are presented in a single list. When false, settings are shown
@@ -200,9 +209,8 @@ public class SettingsActivity extends PreferenceActivity implements
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        PreferencesState.getInstance().onCreateActivityPreferences(getResources(), getTheme());
         mSettingsActivityStrategy.onCreate();
-        PreferencesState.getInstance().loadsLanguageInActivity();
     }
 
     private void restartActivity() {
@@ -259,12 +267,15 @@ public class SettingsActivity extends PreferenceActivity implements
         bindPreferenceSummaryToValue(
                 findPreference(getApplicationContext().getString(R.string.org_unit)));
 
+        loadFontStyleListPreference();
+
         autoCompleteEditTextPreference = (AutoCompleteEditTextPreference) findPreference(
                 getApplicationContext().getString(R.string.org_unit));
         autoCompleteEditTextPreference.setOnPreferenceClickListener(
                 mSettingsActivityStrategy.getOnPreferenceClickListener());
         autoCompleteEditTextPreference.pullOrgUnits();
 
+        autoCompleteEditTextPreference.setContext(this);
         serverUrlPreference = (Preference) findPreference(
                 getApplicationContext().getResources().getString(R.string.dhis_url));
         serverUrlPreference.setOnPreferenceClickListener(
@@ -279,6 +290,23 @@ public class SettingsActivity extends PreferenceActivity implements
             autoCompleteEditTextPreference.setOnPreferenceChangeListener(
                     mSettingsActivityStrategy.getOnPreferenceChangeListener());
         }
+    }
+
+    private void loadFontStyleListPreference() {
+        ListPreference listPreference = (ListPreference) findPreference(
+                getApplicationContext().getString(R.string.font_sizes));
+
+        List<String> entries = new ArrayList<>();
+        List<String> entryValues = new ArrayList<>();
+
+        for (FontStyle fontStyle:FontStyle.values()) {
+            entries.add(Utils.getInternationalizedString(fontStyle.getTitle()));
+            entryValues.add(String.valueOf(fontStyle.getResId()));
+        }
+
+        listPreference.setEntries(entries.toArray(new CharSequence[entries.size()]));
+        listPreference.setEntryValues(entryValues.toArray(new CharSequence[entryValues.size()]));
+        listPreference.setDefaultValue(String.valueOf(FontStyle.Medium.getResId()));
     }
 
     /**
@@ -335,6 +363,7 @@ public class SettingsActivity extends PreferenceActivity implements
         PreferencesState.getInstance().reloadPreferences();
         Class callerActivityClass = getCallerActivity();
         Intent returnIntent = new Intent(this, callerActivityClass);
+        returnIntent.putExtra(getString(R.string.show_announcement_key), SettingsActivityStrategy.showAnnouncementOnBackPressed());
         startActivity(returnIntent);
     }
 
@@ -345,7 +374,7 @@ public class SettingsActivity extends PreferenceActivity implements
             return DashboardActivity.class;
         }
         Class callerActivity = (Class) creationIntent.getSerializableExtra(
-                BaseActivity.SETTINGS_CALLER_ACTIVITY);
+                SETTINGS_CALLER_ACTIVITY);
         if (callerActivity == null) {
             return DashboardActivity.class;
         }
@@ -362,6 +391,8 @@ public class SettingsActivity extends PreferenceActivity implements
         @Override
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
+            PreferencesState.getInstance().onCreateActivityPreferences(getResources(),
+                    null);//the theme not exist in a static context
             addPreferencesFromResource(R.xml.pref_general);
 
 
@@ -392,6 +423,8 @@ public class SettingsActivity extends PreferenceActivity implements
                     (AutoCompleteEditTextPreference) findPreference(getString(R.string.org_unit));
             settingsActivity.serverUrlPreference = (Preference) findPreference(
                     getResources().getString(R.string.dhis_url));
+
+            settingsActivity.loadFontStyleListPreference();
 
             settingsActivity.autoCompleteEditTextPreference.pullOrgUnits();
 

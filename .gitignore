@@ -41,3 +41,6 @@ captures/
 
 # Last commit file
 app/src/main/res/raw/lastcommit.txt
+
+# Config
+app/src/*/res/raw/config.json
