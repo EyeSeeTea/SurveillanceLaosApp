@@ -32,6 +32,7 @@ import org.eyeseetea.malariacare.data.sync.importer.models.OrganisationUnitExten
 import org.eyeseetea.malariacare.data.sync.importer.strategies.APullControllerStrategy;
 import org.eyeseetea.malariacare.data.sync.importer.strategies.PullControllerStrategy;
 import org.eyeseetea.malariacare.domain.boundary.IPullController;
+import org.eyeseetea.malariacare.domain.exception.PopulateCsvException;
 import org.eyeseetea.malariacare.domain.exception.PullConversionException;
 import org.eyeseetea.malariacare.domain.usecase.pull.PullFilters;
 import org.eyeseetea.malariacare.domain.usecase.pull.PullStep;
@@ -48,7 +49,7 @@ public class PullController implements IPullController {
     PullDhisSDKDataSource mPullRemoteDataSource = new PullDhisSDKDataSource();
     ConvertFromSDKVisitor mConverter;
     DataConverter mDataConverter;
-    private APullControllerStrategy mPullControllerStrategy = new PullControllerStrategy();
+    private APullControllerStrategy mPullControllerStrategy = new PullControllerStrategy(this);
     private Context mContext;
     private boolean cancelPull;
 
@@ -63,24 +64,7 @@ public class PullController implements IPullController {
 
     @Override
     public void pull(final PullFilters pullFilters, final Callback callback) {
-        Log.d(TAG, "Starting PULL process...");
-
-        try {
-
-            callback.onStep(PullStep.METADATA);
-
-            populateMetadataFromCsvs(pullFilters.isDemo());
-
-            if (pullFilters.isDemo()) {
-                callback.onComplete();
-            } else {
-
-                pullMetada(pullFilters, callback);
-            }
-        } catch (Exception ex) {
-            Log.e(TAG, "pull: " + ex.getLocalizedMessage());
-            callback.onError(ex);
-        }
+        mPullControllerStrategy.pull(pullFilters, callback);
     }
 
     @Override
@@ -88,7 +72,7 @@ public class PullController implements IPullController {
         cancelPull = true;
     }
 
-    private void pullMetada(final PullFilters pullFilters, final Callback callback) {
+    public void pullMetada(final PullFilters pullFilters, final Callback callback) {
         if (cancelPull) {
             callback.onCancel();
             return;
@@ -124,7 +108,7 @@ public class PullController implements IPullController {
         }
     }
 
-    private void populateMetadataFromCsvs(boolean isDemo) throws IOException {
+    public void populateMetadataFromCsvs(boolean isDemo) throws IOException {
         PopulateDB.initDataIfRequired(mContext);
 
         if (isDemo) {
@@ -133,7 +117,7 @@ public class PullController implements IPullController {
         }
     }
 
-    private void pullData(PullFilters pullFilters, List<OrganisationUnit> organisationUnits,
+    public void pullData(PullFilters pullFilters, List<OrganisationUnit> organisationUnits,
             final Callback callback) {
 
         if (cancelPull) {
@@ -145,8 +129,7 @@ public class PullController implements IPullController {
                 new IDataSourceCallback<List<Event>>() {
                     @Override
                     public void onSuccess(List<Event> result) {
-                        convertData(callback);
-                        callback.onComplete();
+                        mPullControllerStrategy.onPullDataComplete(callback);
                     }
 
                     @Override
@@ -175,13 +158,12 @@ public class PullController implements IPullController {
 
             OrgUnitToOptionConverter.convert();
             mPullControllerStrategy.convertMetadata(mConverter);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            callback.onError(new PullConversionException());
+        } catch (NullPointerException ex) {
+            callback.onError(new PullConversionException(ex));
         }
     }
 
-    private void convertData(final Callback callback) {
+    public void convertData(final Callback callback) {
 
         if (cancelPull) {
             callback.onCancel();
@@ -193,9 +175,8 @@ public class PullController implements IPullController {
         try {
             mConverter.setOrgUnits(OrgUnit.getAllOrgUnit());
             mDataConverter.convert(callback, mConverter);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-            callback.onError(new PullConversionException());
+        } catch (NullPointerException ex) {
+            callback.onError(new PullConversionException(ex));
         }
     }
 }

@@ -188,13 +188,11 @@ public class PopulateDB {
         new PopulateDBStrategy().init();
 
         Log.i(TAG, "DB empty, loading data ...");
-        try {
-            PopulateDB.populateDB(context);
-            //Get maximum total of questions
-            Session.setMaxTotalQuestions(Program.getMaxTotalQuestions());
-        } catch (IOException e) {
-            throw e;
-        }
+
+        PopulateDB.populateDB(context);
+        //Get maximum total of questions
+        Session.setMaxTotalQuestions(Program.getMaxTotalQuestions());
+
         Log.i(TAG, "DB Loaded ...DONE");
     }
 
@@ -227,7 +225,7 @@ public class PopulateDB {
                 continue;
             }
             String[] line;
-            while ((line = reader.readNext()) != null) {
+            while ((line = reader.readNext()) != null && !line[0].isEmpty()) {
                 switch (table) {
                     case PROGRAMS_CSV:
                         Program program = new Program();

@@ -31,6 +31,8 @@ import org.eyeseetea.malariacare.domain.entity.pushsummary.PushReport;
 import org.eyeseetea.malariacare.domain.exception.SurveysToPushNotFoundException;
 import org.eyeseetea.malariacare.domain.exception.push.PushDhisException;
 import org.eyeseetea.malariacare.domain.exception.push.PushReportException;
+import org.eyeseetea.malariacare.domain.exception.ConvertedEventsToPushNotFoundException;
+import org.eyeseetea.malariacare.domain.exception.SurveysToPushNotFoundException;
 import org.hisp.dhis.client.sdk.android.api.D2;
 import org.hisp.dhis.client.sdk.android.api.persistence.flow.EventFlow;
 import org.hisp.dhis.client.sdk.android.api.persistence.flow.StateFlow;
@@ -43,7 +45,6 @@ import java.util.Map;
 import java.util.Set;
 
 import rx.Observable;
-import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
 import rx.schedulers.Schedulers;
 
@@ -59,7 +60,7 @@ public class PushDhisSDKDataSource {
         final Set<String> eventUids = getEventUidToBePushed();
 
         if (eventUids.isEmpty() || eventUids.size() == 0) {
-            callback.onError(new SurveysToPushNotFoundException("Null events"));
+            callback.onError(new ConvertedEventsToPushNotFoundException());
             return;
         }
         Observable<Map<String, ImportSummary>> eventObserver =
@@ -67,7 +68,7 @@ public class PushDhisSDKDataSource {
 
         eventObserver
                 .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
+                .observeOn(Schedulers.io())
                 .subscribe(new Action1<Map<String, ImportSummary>>() {
                     @Override
                     public void call(Map<String, ImportSummary> mapEventsImportSummary) {

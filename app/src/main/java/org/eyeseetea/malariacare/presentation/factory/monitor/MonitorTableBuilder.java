@@ -73,8 +73,10 @@ public abstract class MonitorTableBuilder {
      * Updates table info with the survey
      */
     public void addSurvey(Survey survey) {
-        for (MonitorRowBuilder rowBuilder : rowBuilders) {
-            rowBuilder.addSurvey(survey);
+        if (rowBuilders != null) {
+            for (MonitorRowBuilder rowBuilder : rowBuilders) {
+                rowBuilder.addSurvey(survey);
+            }
         }
     }
 
@@ -83,8 +85,10 @@ public abstract class MonitorTableBuilder {
      */
     public void addDataToView(WebView webView) {
         addTableToView(webView);
+        if (rowBuilders != null) {
         for (MonitorRowBuilder rowBuilder : rowBuilders) {
             addRowToView(webView, rowBuilder);
+        }
         }
     }
 

@@ -9,7 +9,7 @@ import org.eyeseetea.malariacare.BaseActivity;
 import org.eyeseetea.malariacare.R;
 import org.eyeseetea.malariacare.data.authentication.AuthenticationManager;
 import org.eyeseetea.malariacare.data.database.utils.PreferencesState;
-import org.eyeseetea.malariacare.data.database.utils.populatedb.PopulateDB;
+import org.eyeseetea.malariacare.data.database.utils.Session;
 import org.eyeseetea.malariacare.domain.boundary.IAuthenticationManager;
 import org.eyeseetea.malariacare.domain.entity.Credentials;
 import org.eyeseetea.malariacare.domain.usecase.LoginUseCase;
@@ -23,9 +23,15 @@ public class BaseActivityStrategy extends ABaseActivityStrategy {
     IAuthenticationManager mAuthenticationManager;
     LoginUseCase mLoginUseCase;
     BaseActivity mBaseActivity;
+    private Menu mMenu;
     public BaseActivityStrategy(BaseActivity baseActivity) {
         super(baseActivity);
         mBaseActivity = baseActivity;
+    }
+
+    @Override
+    public void onStart() {
+
     }
 
     @Override
@@ -43,9 +49,24 @@ public class BaseActivityStrategy extends ABaseActivityStrategy {
 
     @Override
     public void onCreateOptionsMenu(Menu menu) {
-
+        mMenu = menu;
+        MenuItem item = menu.findItem(R.id.demo_mode);
+        item.setVisible(PreferencesState.getInstance().isDevelopOptionActive());
+        changeDemoModeText();
     }
 
+    private void changeDemoModeText() {
+        MenuItem demoModeMenuItem = mMenu.findItem(R.id.demo_mode);
+        if (isDemoModeActivated()) {
+            demoModeMenuItem.setTitle(R.string.clean_demo_db);
+        } else {
+            demoModeMenuItem.setTitle(R.string.run_in_demo_mode);
+        }
+    }
+
+    private boolean isDemoModeActivated() {
+        return Session.getCredentials().isDemoCredentials();
+    }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -62,16 +83,39 @@ public class BaseActivityStrategy extends ABaseActivityStrategy {
     }
 
     public void runDemoMode() {
-        PopulateDB.wipeSurveys();
-        PreferencesState.getInstance().saveStringPreference(R.string.org_unit, "");
-        PreferencesState.getInstance().reloadPreferences();
+        mLogoutUseCase.execute(new LogoutUseCase.Callback() {
+            @Override
+            public void onLogoutSuccess() {
+                PreferencesState.getInstance().reloadPreferences();
+                updateActionBarTitleAfterLogout();
+                loginDemoMode();
+            }
+
+            @Override
+            public void onLogoutError(String message) {
+                Log.e(TAG, message);
+            }
+        });
+    }
+
+    private void updateActionBarTitleAfterLogout() {
         android.support.v7.app.ActionBar actionBar = mBaseActivity.getSupportActionBar();
         LayoutUtils.setActionBarLogo(actionBar);
         LayoutUtils.setActionBarText(actionBar,
                 PreferencesState.getInstance().getContext().getResources().getString(
                         R.string.malaria_case_based_reporting), "");
-        loginDemoMode();
     }
+    @Override
+    public void onBackPressed() {
+
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+
+    }
+
+
 
     private void loginDemoMode() {
         mLoginUseCase.execute(Credentials.createDemoCredentials(),
@@ -79,6 +123,7 @@ public class BaseActivityStrategy extends ABaseActivityStrategy {
                     @Override
                     public void onLoginSuccess() {
                         reloadDashboard();
+                        changeDemoModeText();
                         Log.d(TAG, "login successful");
                     }
 
@@ -98,8 +143,18 @@ public class BaseActivityStrategy extends ABaseActivityStrategy {
                     }
 
                     @Override
-                    public void onConfigJsonNotPresent() {
-                        Log.d(TAG, "onConfigJsonNotPresent");
+                    public void onConfigJsonInvalid() {
+                        Log.d(TAG, "onConfigJsonInvalid");
+                    }
+
+                    @Override
+                    public void onUnexpectedError() {
+                        Log.d(TAG, "onUnexpectedError");
+                    }
+
+                    @Override
+                    public void onMaxLoginAttemptsReachedError() {
+                        Log.d(TAG, "onMaxLoginAttemptsReachedError");
                     }
                 }
         );

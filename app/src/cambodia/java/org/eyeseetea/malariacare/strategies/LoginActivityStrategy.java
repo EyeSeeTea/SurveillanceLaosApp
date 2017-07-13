@@ -6,7 +6,10 @@ import android.view.MenuItem;
 import org.eyeseetea.malariacare.LoginActivity;
 import org.eyeseetea.malariacare.ProgressActivity;
 import org.eyeseetea.malariacare.SettingsActivity;
+import org.eyeseetea.malariacare.domain.boundary.IAuthenticationManager;
+import org.eyeseetea.malariacare.domain.entity.Credentials;
 import org.eyeseetea.malariacare.domain.usecase.LoadUserAndCredentialsUseCase;
+import org.eyeseetea.malariacare.domain.usecase.LoginUseCase;
 
 public class LoginActivityStrategy extends ALoginActivityStrategy {
     public LoginActivityStrategy(LoginActivity loginActivity) {
@@ -38,6 +41,7 @@ public class LoginActivityStrategy extends ALoginActivityStrategy {
 
     @Override
     public void finishAndGo() {
+        loginActivity.onFinishLoading(null);
         if (loginActivity.getIntent().getBooleanExtra(LoginActivity.PULL_REQUIRED, false)) {
             loginActivity.startActivity(new Intent(loginActivity, ProgressActivity.class));
         } else {
@@ -50,4 +54,22 @@ public class LoginActivityStrategy extends ALoginActivityStrategy {
 
         loginActivity.finish();
     }
+
+    @Override
+    public void initViews() {
+
+    }
+
+
+    @Override
+    public void onLoginSuccess(Credentials credentials) {
+        loginActivity.checkAnnouncement();
+    }
+
+    @Override
+    public void initLoginUseCase(IAuthenticationManager authenticationManager) {
+        loginActivity.mLoginUseCase = new LoginUseCase(authenticationManager);
+    }
+
+
 }

@@ -28,6 +28,11 @@ public class BaseActivityStrategy extends ABaseActivityStrategy {
     }
 
     @Override
+    public void onStart() {
+
+    }
+
+    @Override
     public void onStop() {
 
     }
@@ -42,7 +47,7 @@ public class BaseActivityStrategy extends ABaseActivityStrategy {
 
     @Override
     public void onCreateOptionsMenu(Menu menu) {
-
+        menu.removeItem(R.id.demo_mode);
     }
 
 
@@ -58,6 +63,16 @@ public class BaseActivityStrategy extends ABaseActivityStrategy {
                 return false;
         }
         return true;
+    }
+
+    @Override
+    public void onBackPressed() {
+
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+
     }
 
     public void runDemoMode() {
@@ -110,8 +125,19 @@ public class BaseActivityStrategy extends ABaseActivityStrategy {
                     }
 
                     @Override
-                    public void onConfigJsonNotPresent() {
-                        Log.d(TAG, "onConfigJsonNotPresent");
+                    public void onConfigJsonInvalid() {
+                        Log.d(TAG, "onConfigJsonInvalid");
+                    }
+
+                    @Override
+                    public void onUnexpectedError() {
+                        Log.d(TAG, "onUnexpectedError");
+                    }
+
+                    @Override
+                    public void onMaxLoginAttemptsReachedError() {
+                        Log.e(this.getClass().getSimpleName(),
+                                "Max Login Attempts Reached Error");
                     }
                 }
         );

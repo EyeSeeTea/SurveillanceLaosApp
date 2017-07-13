@@ -46,6 +46,7 @@ import org.eyeseetea.malariacare.data.database.model.Survey;
 import org.eyeseetea.malariacare.data.database.utils.ExportData;
 import org.eyeseetea.malariacare.data.database.utils.PreferencesState;
 import org.eyeseetea.malariacare.data.database.utils.Session;
+import org.eyeseetea.malariacare.domain.exception.ExportDataException;
 import org.eyeseetea.malariacare.domain.boundary.IAuthenticationManager;
 import org.eyeseetea.malariacare.domain.entity.Credentials;
 import org.eyeseetea.malariacare.domain.usecase.ALoginUseCase;
@@ -228,7 +229,12 @@ public abstract class BaseActivity extends ActionBarActivity {
                 break;
             case R.id.export_db:
                 debugMessage("Export db");
-                Intent emailIntent = ExportData.dumpAndSendToAIntent(this);
+                Intent emailIntent = null;
+                try {
+                    emailIntent = ExportData.dumpAndSendToAIntent(this);
+                } catch (ExportDataException e) {
+                    Toast.makeText(this, R.string.error_exporting_data, Toast.LENGTH_LONG).show();
+                }
                 if (emailIntent != null) {
                     startActivityForResult(emailIntent, DUMP_REQUEST_CODE);
                 }
@@ -239,12 +245,6 @@ public abstract class BaseActivity extends ActionBarActivity {
                 }
         }
         return true;
-    }
-
-    private void runInDemoMode() {
-        //logout
-        //login as demo mode
-
     }
 
     @Override
@@ -263,6 +263,7 @@ public abstract class BaseActivity extends ActionBarActivity {
      * Every BaseActivity(Details, Create, Survey) goes back to DashBoard
      */
     public void onBackPressed() {
+        mBaseActivityStrategy.onBackPressed();
         finishAndGo(DashboardActivity.class);
     }
 
@@ -291,10 +292,7 @@ public abstract class BaseActivity extends ActionBarActivity {
     }
 
     protected void goSettings() {
-        Intent intentSettings = new Intent(this, SettingsActivity.class);
-        intentSettings.putExtra(SettingsActivity.SETTINGS_CALLER_ACTIVITY, this.getClass());
-        intentSettings.putExtra(SettingsActivity.IS_LOGIN_DONE, false);
-        startActivity(new Intent(this, SettingsActivity.class));
+        mBaseActivityStrategy.goSettings();
     }
 
     /**
@@ -324,7 +322,7 @@ public abstract class BaseActivity extends ActionBarActivity {
      * @param titleId Id of the title resource
      * @param rawId   Id of the raw text resource
      */
-    private void showAlertWithMessage(int titleId, int rawId) {
+    public void showAlertWithMessage(int titleId, int rawId) {
         InputStream message = getApplicationContext().getResources().openRawResource(rawId);
         new AlertDialog.Builder(this)
                 .setTitle(getApplicationContext().getString(titleId))
@@ -438,7 +436,25 @@ public abstract class BaseActivity extends ActionBarActivity {
 
     @Override
     protected void onDestroy() {
+        mBaseActivityStrategy.onDestroy();
         super.onDestroy();
         alarmPush.cancelPushAlarm(this);
     }
+
+    @Override
+    protected void onStart() {
+        mBaseActivityStrategy.onStart();
+        super.onStart();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        mBaseActivityStrategy.onWindowFocusChanged(hasFocus);
+        super.onWindowFocusChanged(hasFocus);
+    }
+
+    public BaseActivityStrategy getBaseActivityStrategy() {
+        return mBaseActivityStrategy;
+    }
+
 }
