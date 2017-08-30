@@ -19,25 +19,25 @@
 
 package org.eyeseetea.malariacare;
 
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.content.res.Resources;
-import android.os.Build;
 import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
-import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.util.DisplayMetrics;
 
-import org.eyeseetea.malariacare.database.utils.PreferencesState;
+import org.eyeseetea.malariacare.data.database.utils.PreferencesState;
 import org.eyeseetea.malariacare.strategies.SettingsActivityStrategy;
+import org.eyeseetea.malariacare.utils.Utils;
 import org.eyeseetea.malariacare.views.AutoCompleteEditTextPreference;
+import org.eyeseetea.sdk.presentation.styles.FontStyle;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -56,13 +56,11 @@ import java.util.Locale;
 public class SettingsActivity extends PreferenceActivity implements
         SharedPreferences.OnSharedPreferenceChangeListener {
     public static final String IS_LOGIN_DONE = "IS_LOGIN_DONE";
+
     /**
-     * Determines whether to always show the simplified settings UI, where
-     * settings are presented in a single list. When false, settings are shown
-     * as a master/detail two-pane view on tablets. When true, a single pane is
-     * shown on tablets.
+     * Extra param to annotate the activity to return after settings
      */
-    private static final boolean ALWAYS_SIMPLE_PREFS = false;
+    public static final String SETTINGS_CALLER_ACTIVITY = "SETTINGS_CALLER_ACTIVITY";
 
     private static final String TAG = ".SettingsActivity";
     /**
@@ -100,28 +98,6 @@ public class SettingsActivity extends PreferenceActivity implements
     public Preference serverUrlPreference;
 
     /**
-     * Helper method to determine if the device has an extra-large screen. For
-     * example, 10" tablets are extra-large.
-     */
-    private static boolean isXLargeTablet(Context context) {
-        return (context.getResources().getConfiguration().screenLayout
-                & Configuration.SCREENLAYOUT_SIZE_MASK) >= Configuration.SCREENLAYOUT_SIZE_XLARGE;
-    }
-
-    /**
-     * Determines whether the simplified settings UI should be shown. This is
-     * true if this is forced via {@link #ALWAYS_SIMPLE_PREFS}, or the device
-     * doesn't have newer APIs like {@link PreferenceFragment}, or the device
-     * doesn't have an extra-large screen. In these cases, a single-pane
-     * "simplified" settings UI should be shown.
-     */
-    private static boolean isSimplePreferences(Context context) {
-        return ALWAYS_SIMPLE_PREFS
-                || Build.VERSION.SDK_INT < Build.VERSION_CODES.HONEYCOMB
-                || !isXLargeTablet(context);
-    }
-
-    /**
      * Binds a preference's summary to its value. More specifically, when the
      * preference's value is changed, its summary (line of text below the
      * preference title) is updated to reflect the value. The summary is also
@@ -130,7 +106,7 @@ public class SettingsActivity extends PreferenceActivity implements
      *
      * @see #sBindPreferenceSummaryToValueListener
      */
-    private static void bindPreferenceSummaryToValue(Preference preference) {
+    public static void bindPreferenceSummaryToValue(Preference preference) {
         // Set the listener to watch for value changes.
         preference.setOnPreferenceChangeListener(sBindPreferenceSummaryToValueListener);
 
@@ -200,12 +176,11 @@ public class SettingsActivity extends PreferenceActivity implements
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        PreferencesState.getInstance().onCreateActivityPreferences(getResources(), getTheme());
         mSettingsActivityStrategy.onCreate();
-        PreferencesState.getInstance().loadsLanguageInActivity();
     }
 
-    private void restartActivity() {
+    public void restartActivity() {
         Intent intent = getIntent();
         finish();
         startActivity(intent);
@@ -222,18 +197,10 @@ public class SettingsActivity extends PreferenceActivity implements
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
 
-        setupSimplePreferencesScreen();
+        setupPreferencesScreen();
     }
 
-    /**
-     * Shows the simplified settings UI if the device configuration if the
-     * device configuration dictates that a simplified, single-pane UI should be
-     * shown.
-     */
-    private void setupSimplePreferencesScreen() {
-        if (!isSimplePreferences(this)) {
-            return;
-        }
+    private void setupPreferencesScreen() {
 
         // Add 'general' preferences.
         addPreferencesFromResource(R.xml.pref_general);
@@ -259,12 +226,15 @@ public class SettingsActivity extends PreferenceActivity implements
         bindPreferenceSummaryToValue(
                 findPreference(getApplicationContext().getString(R.string.org_unit)));
 
+        loadFontStyleListPreference();
+
         autoCompleteEditTextPreference = (AutoCompleteEditTextPreference) findPreference(
                 getApplicationContext().getString(R.string.org_unit));
         autoCompleteEditTextPreference.setOnPreferenceClickListener(
                 mSettingsActivityStrategy.getOnPreferenceClickListener());
         autoCompleteEditTextPreference.pullOrgUnits();
 
+        autoCompleteEditTextPreference.setContext(this);
         serverUrlPreference = (Preference) findPreference(
                 getApplicationContext().getResources().getString(R.string.dhis_url));
         serverUrlPreference.setOnPreferenceClickListener(
@@ -279,25 +249,25 @@ public class SettingsActivity extends PreferenceActivity implements
             autoCompleteEditTextPreference.setOnPreferenceChangeListener(
                     mSettingsActivityStrategy.getOnPreferenceChangeListener());
         }
+
+        mSettingsActivityStrategy.addExtraPreferences();
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean onIsMultiPane() {
-        return isXLargeTablet(this) && !isSimplePreferences(this);
-    }
+    private void loadFontStyleListPreference() {
+        ListPreference listPreference = (ListPreference) findPreference(
+                getApplicationContext().getString(R.string.font_sizes));
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
-    public void onBuildHeaders(List<Header> target) {
-        if (!isSimplePreferences(this)) {
-            loadHeadersFromResource(R.xml.pref_headers, target);
+        List<String> entries = new ArrayList<>();
+        List<String> entryValues = new ArrayList<>();
+
+        for (FontStyle fontStyle:FontStyle.values()) {
+            entries.add(Utils.getInternationalizedString(fontStyle.getTitle()));
+            entryValues.add(String.valueOf(fontStyle.getResId()));
         }
+
+        listPreference.setEntries(entries.toArray(new CharSequence[entries.size()]));
+        listPreference.setEntryValues(entryValues.toArray(new CharSequence[entryValues.size()]));
+        listPreference.setDefaultValue(String.valueOf(FontStyle.Medium.getResId()));
     }
 
     @Override
@@ -305,12 +275,7 @@ public class SettingsActivity extends PreferenceActivity implements
         if (key.equals(getString(R.string.language_code))) {
             restartActivity();
         }
-
-    }
-
-    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
-    public boolean isValidFragment(String fragment) {
-        return true;
+        mSettingsActivityStrategy.onSharedPreferenceChanged(sharedPreferences, key);
     }
 
     @Override
@@ -332,9 +297,11 @@ public class SettingsActivity extends PreferenceActivity implements
 
     @Override
     public void onBackPressed() {
+        mSettingsActivityStrategy.onBackPressed();
         PreferencesState.getInstance().reloadPreferences();
         Class callerActivityClass = getCallerActivity();
         Intent returnIntent = new Intent(this, callerActivityClass);
+        returnIntent.putExtra(getString(R.string.show_announcement_key), SettingsActivityStrategy.showAnnouncementOnBackPressed());
         startActivity(returnIntent);
     }
 
@@ -345,7 +312,7 @@ public class SettingsActivity extends PreferenceActivity implements
             return DashboardActivity.class;
         }
         Class callerActivity = (Class) creationIntent.getSerializableExtra(
-                BaseActivity.SETTINGS_CALLER_ACTIVITY);
+                SETTINGS_CALLER_ACTIVITY);
         if (callerActivity == null) {
             return DashboardActivity.class;
         }
@@ -353,65 +320,33 @@ public class SettingsActivity extends PreferenceActivity implements
         return callerActivity;
     }
 
+
     /**
-     * This fragment shows general preferences only. It is used when the
-     * activity is showing a two-pane settings UI.
+     * Finish current activity and launches an activity with the given class
+     *
+     * @param targetActivityClass Given target activity class
      */
-    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
-    public static class GeneralPreferenceFragment extends PreferenceFragment {
-        @Override
-        public void onCreate(Bundle savedInstanceState) {
-            super.onCreate(savedInstanceState);
-            addPreferencesFromResource(R.xml.pref_general);
-
-
-            if (BuildConfig.translations) {
-                setLanguageOptions(findPreference(
-                        PreferencesState.getInstance().getContext().getString(
-                                R.string.language_code)));
-            }
-
-            // Bind the summaries of EditText/List/Dialog/Ringtone preferences
-            // to their values. When their values change, their summaries are
-            // updated to reflect the new value, per the Android Design
-            // guidelines.
-            bindPreferenceSummaryToValue(findPreference(getString(R.string.font_sizes)));
-            bindPreferenceSummaryToValue(findPreference(getString(R.string.language_code)));
-            bindPreferenceSummaryToValue(findPreference(getString(R.string.dhis_url)));
-            bindPreferenceSummaryToValue(findPreference(getString(R.string.org_unit)));
-
-            SettingsActivity settingsActivity = (SettingsActivity) getActivity();
-
-            //Hide translation option if is not active in gradle variable
-            if (BuildConfig.translations) {
-                bindPreferenceSummaryToValue(
-                        findPreference(getResources().getString(R.string.language_code)));
-            }
-
-            settingsActivity.autoCompleteEditTextPreference =
-                    (AutoCompleteEditTextPreference) findPreference(getString(R.string.org_unit));
-            settingsActivity.serverUrlPreference = (Preference) findPreference(
-                    getResources().getString(R.string.dhis_url));
-
-            settingsActivity.autoCompleteEditTextPreference.pullOrgUnits();
-
-            settingsActivity.autoCompleteEditTextPreference.setOnPreferenceClickListener(
-                    settingsActivity.mSettingsActivityStrategy.getOnPreferenceClickListener());
-            settingsActivity.serverUrlPreference.setOnPreferenceClickListener(
-                    settingsActivity.mSettingsActivityStrategy.getOnPreferenceClickListener());
-
-            settingsActivity.mSettingsActivityStrategy.setupPreferencesScreen(
-                    getPreferenceScreen());
-
-            if (settingsActivity.mSettingsActivityStrategy.getOnPreferenceChangeListener()
-                    != null) {
-                settingsActivity.serverUrlPreference.setOnPreferenceChangeListener(
-                        settingsActivity.mSettingsActivityStrategy.getOnPreferenceChangeListener());
-
-                settingsActivity.autoCompleteEditTextPreference.setOnPreferenceChangeListener(
-                        settingsActivity.mSettingsActivityStrategy.getOnPreferenceChangeListener());
-            }
-        }
+    public void finishAndGo(Class targetActivityClass) {
+        Intent targetActivityIntent = new Intent(this, targetActivityClass);
+        finish();
+        startActivity(targetActivityIntent);
     }
 
+    @Override
+    protected void onStart() {
+        mSettingsActivityStrategy.onStart();
+        super.onStart();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        mSettingsActivityStrategy.onWindowFocusChanged(hasFocus);
+        super.onWindowFocusChanged(hasFocus);
+    }
+
+    @Override
+    protected void onDestroy() {
+        mSettingsActivityStrategy.onDestroy();
+        super.onDestroy();
+    }
 }

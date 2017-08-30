@@ -15,7 +15,8 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with QIS Surveillance App.  If not, see <http://www.gnu.org/licenses/>.
- */
+ *//*
+
 
 package org.eyeseetea.malariacare.test.utils;
 
@@ -25,14 +26,16 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 
-import org.eyeseetea.malariacare.views.TextCard;
+import org.eyeseetea.sdk.presentation.views.CustomTextView;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeMatcher;
 
+*/
 /**
  * Created by arrizabalaga on 25/05/15.
- */
+ *//*
+
 public class SurveyAssessmentMatcher extends TypeSafeMatcher<View> {
     private final String facility;
     private final String surveyType;
@@ -51,8 +54,8 @@ public class SurveyAssessmentMatcher extends TypeSafeMatcher<View> {
         if (!(view instanceof EditText)) {
             return false;
         }
-        TextCard facility = (TextCard) ((ViewGroup) view).getChildAt(0);
-        TextCard surveyType = (TextCard) ((ViewGroup) view).getChildAt(0);
+        CustomTextView facility = (CustomTextView) ((ViewGroup) view).getChildAt(0);
+        CustomTextView surveyType = (CustomTextView) ((ViewGroup) view).getChildAt(0);
         return (facility.getText().equals(this.facility) && surveyType.getText().equals(
                 this.surveyType));
     }
@@ -61,4 +64,4 @@ public class SurveyAssessmentMatcher extends TypeSafeMatcher<View> {
     public void describeTo(Description description) {
         description.appendText("with error: " + facility + " - " + surveyType);
     }
-}
+}*/

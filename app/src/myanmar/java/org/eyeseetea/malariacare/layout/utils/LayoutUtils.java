@@ -2,6 +2,7 @@ package org.eyeseetea.malariacare.layout.utils;
 
 import android.content.Context;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.ActionBar;
 import android.text.Html;
@@ -13,8 +14,8 @@ import android.widget.TextView;
 
 import org.eyeseetea.malariacare.DashboardActivity;
 import org.eyeseetea.malariacare.R;
-import org.eyeseetea.malariacare.database.model.User;
-import org.eyeseetea.malariacare.database.utils.PreferencesState;
+import org.eyeseetea.malariacare.data.database.model.User;
+import org.eyeseetea.malariacare.data.database.utils.PreferencesState;
 
 /**
  * Created by idelcano on 01/11/2016.
@@ -29,6 +30,9 @@ public class LayoutUtils extends BaseLayoutUtils {
         dashboardActivity.setTabHostsWithImages();
     }
 
+    public static void setTabDivider(DashboardActivity dashboardActivity) {
+        dashboardActivity.setTabDivider();
+    }
 
     public static void setActionBarAppAndUser(ActionBar actionBar) {
         Context context = PreferencesState.getInstance().getContext();
@@ -40,15 +44,18 @@ public class LayoutUtils extends BaseLayoutUtils {
         String colorString = String.format("%X", color).substring(2);
         Spanned spannedTitle = Html.fromHtml(
                 String.format("<font color=\"#%s\" size=\"10\"><b>%s</b></font>", colorString,
-                        context.getString(R.string.app_name)));
+                        context.getString(R.string.malaria_case_based_reporting)));
         color = ContextCompat.getColor(context, R.color.text_second_color);
         colorString = String.format("%X", color).substring(2);
         User user = User.getLoggedUser();
         String userName;
         userName = (user == null) ? "" : user.getName();
+
+        String volunteer = context.getString(R.string.volunteer_label);
+
         Spanned spannedSubTitle = Html.fromHtml(
                 String.format("<font color=\"#%s\"><b>%s</b></font>", colorString,
-                        "Volunteer: " + userName + ""));
+                        volunteer + " " + userName + ""));
         actionBar.setCustomView(R.layout.custom_action_bar);
         TextView title = (TextView) actionBar.getCustomView().findViewById(
                 R.id.action_bar_multititle_title);
@@ -73,7 +80,11 @@ public class LayoutUtils extends BaseLayoutUtils {
         }
 
         int totalHeight = 0;
-        int desiredHeight = View.MeasureSpec.makeMeasureSpec(listView.getHeight(),
+        int itemHeight = listView.getHeight();
+        if (itemHeight == 0) {
+            return;
+        }
+        int desiredHeight = View.MeasureSpec.makeMeasureSpec(itemHeight,
                 View.MeasureSpec.AT_MOST);
 
         for (int i = 0; i < listAdapter.getCount(); i++) {
@@ -88,7 +99,47 @@ public class LayoutUtils extends BaseLayoutUtils {
                 totalHeight + (listView.getDividerHeight() * (listAdapter.getCount() - 1)));
     }
 
-    public static void setDivider(ListView listView) {
-        listView.setDividerHeight(0);
+    public static void setListRowBackgroundColor(View row) {
+        int myColor = ContextCompat.getColor(
+                PreferencesState.getInstance().getContext(),
+                R.color.rowBackgroundColor
+        );
+        row.setBackgroundColor(myColor);
     }
+
+
+    public static void setDashboardActionBar(ActionBar actionBar) {
+        ColorDrawable myColor = new ColorDrawable(
+                PreferencesState.getInstance().getContext().getResources().getColor(
+                        R.color.actionbar_background));
+        actionBar.setBackgroundDrawable(myColor);
+    }
+
+    public static void setSurveyActionBar(ActionBar actionBar) {
+        ColorDrawable myColor = new ColorDrawable(
+                PreferencesState.getInstance().getContext().getResources().getColor(
+                        R.color.myanmar_orange));
+        actionBar.setBackgroundDrawable(myColor);
+    }
+
+    public static void setRowDivider(ListView listView) {
+        ColorDrawable myColor = new ColorDrawable(
+                PreferencesState.getInstance().getContext().getResources().getColor(
+                        R.color.headerColor)
+        );
+        listView.setDivider(myColor);
+        listView.setDividerHeight(0);
+        int padding = (int) PreferencesState.getInstance().getContext().getResources().getDimension(
+                R.dimen.dashboard_row_padding);
+        listView.setPadding(padding, 0, padding, 0);
+    }
+
+
+    // Given a index, this method return a background color
+    public static void fixRowViewBackground(View row, int index) {
+        if (index < 1) {
+            row.findViewById(R.id.dotted_line).setVisibility(View.GONE);
+        }
+    }
+
 }

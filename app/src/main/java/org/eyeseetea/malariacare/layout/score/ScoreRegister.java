@@ -21,12 +21,12 @@ package org.eyeseetea.malariacare.layout.score;
 
 import android.util.Log;
 
-import org.eyeseetea.malariacare.database.model.CompositeScore;
-import org.eyeseetea.malariacare.database.model.Option;
-import org.eyeseetea.malariacare.database.model.Question;
-import org.eyeseetea.malariacare.database.model.Survey;
-import org.eyeseetea.malariacare.database.model.Tab;
-import org.eyeseetea.malariacare.database.utils.Session;
+import org.eyeseetea.malariacare.data.database.model.CompositeScore;
+import org.eyeseetea.malariacare.data.database.model.Option;
+import org.eyeseetea.malariacare.data.database.model.Question;
+import org.eyeseetea.malariacare.data.database.model.Survey;
+import org.eyeseetea.malariacare.data.database.model.Tab;
+import org.eyeseetea.malariacare.strategies.SurveyFragmentStrategy;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -58,7 +58,7 @@ public class ScoreRegister {
 
     public static void initScoresForQuestions(List<Question> questions, Survey survey) {
         for (Question question : questions) {
-            if (!question.isHiddenBySurvey(survey)) {
+            if (!question.isHiddenBySurvey(survey.getId_survey())) {
                 question.initScore(survey);
             } else {
                 addRecord(question, 0F, calcDenum(question));
@@ -87,7 +87,7 @@ public class ScoreRegister {
             //FIXME this try catch just covers a error in data compositeScore: '4.2'
             try {
                 return compositeScoreMap.get(cScore).calculateNumDenTotal(result);
-            } catch (Exception ex) {
+            } catch (NullPointerException ex) {
                 return Arrays.asList(new Float(0f), new Float(0f));
             }
         } else {
@@ -151,7 +151,8 @@ public class ScoreRegister {
      * Calculates the numerator of the given question in the current survey
      */
     public static float calcNum(Question question) {
-        return calcNum(question, Session.getSurvey());
+        Survey survey = SurveyFragmentStrategy.getSessionSurveyByQuestion(question);
+        return calcNum(question, survey);
     }
 
     /**
@@ -173,7 +174,8 @@ public class ScoreRegister {
      * Calculates the numerator of the given question in the current survey
      */
     public static float calcDenum(Question question) {
-        return calcDenum(question, Session.getSurvey());
+        Survey survey = SurveyFragmentStrategy.getSessionSurveyByQuestion(question);
+        return calcDenum(question, survey);
     }
 
     /**
@@ -214,16 +216,16 @@ public class ScoreRegister {
         ScoreRegister.clear();
 
         //Register scores for tabs
-        List<Tab> tabs = survey.getTabGroup().getTabs();
+        List<Tab> tabs = survey.getProgram().getTabs();
         ScoreRegister.registerTabScores(tabs);
 
         //Register scores for composites
-        List<CompositeScore> compositeScoreList = CompositeScore.listByTabGroup(
-                survey.getTabGroup());
+        List<CompositeScore> compositeScoreList = CompositeScore.listByProgram(
+                survey.getProgram());
         ScoreRegister.registerCompositeScores(compositeScoreList);
 
         //Initialize scores x question
-        ScoreRegister.initScoresForQuestions(Question.listByTabGroup(survey.getTabGroup()), survey);
+        ScoreRegister.initScoresForQuestions(Question.listByProgram(survey.getProgram()), survey);
 
         return compositeScoreList;
     }

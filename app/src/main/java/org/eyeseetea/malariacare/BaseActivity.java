@@ -23,12 +23,8 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.location.Location;
-import android.location.LocationManager;
 import android.os.Bundle;
-import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.ActionBarActivity;
 import android.telephony.TelephonyManager;
 import android.text.Html;
@@ -45,14 +41,15 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.eyeseetea.malariacare.database.iomodules.dhis.exporter.PushController;
-import org.eyeseetea.malariacare.database.model.Program;
-import org.eyeseetea.malariacare.database.model.Survey;
-import org.eyeseetea.malariacare.database.utils.ExportData;
-import org.eyeseetea.malariacare.database.utils.LocationMemory;
-import org.eyeseetea.malariacare.database.utils.PreferencesState;
-import org.eyeseetea.malariacare.database.utils.Session;
-import org.eyeseetea.malariacare.layout.listeners.SurveyLocationListener;
+import org.eyeseetea.malariacare.data.database.model.Program;
+import org.eyeseetea.malariacare.data.database.model.Survey;
+import org.eyeseetea.malariacare.data.database.utils.ExportData;
+import org.eyeseetea.malariacare.data.database.utils.PreferencesState;
+import org.eyeseetea.malariacare.data.database.utils.Session;
+import org.eyeseetea.malariacare.domain.exception.ExportDataException;
+import org.eyeseetea.malariacare.domain.boundary.IAuthenticationManager;
+import org.eyeseetea.malariacare.domain.entity.Credentials;
+import org.eyeseetea.malariacare.domain.usecase.ALoginUseCase;
 import org.eyeseetea.malariacare.layout.utils.LayoutUtils;
 import org.eyeseetea.malariacare.phonemetadata.PhoneMetaData;
 import org.eyeseetea.malariacare.receivers.AlarmPushReceiver;
@@ -70,22 +67,21 @@ public abstract class BaseActivity extends ActionBarActivity {
     /**
      * Extra param to annotate the activity to return after settings
      */
-    public static final String SETTINGS_CALLER_ACTIVITY = "SETTINGS_CALLER_ACTIVITY";
-    /**
-     * Extra param to annotate the activity to return after settings
-     */
     private static final int DUMP_REQUEST_CODE = 0;
     protected static String TAG = ".BaseActivity";
     private AlarmPushReceiver alarmPush;
 
     private BaseActivityStrategy mBaseActivityStrategy = new BaseActivityStrategy(this);
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        PreferencesState.getInstance().loadsLanguageInActivity();
+        Log.d(TAG, "onCreate");
+
         requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
         requestWindowFeature(Window.FEATURE_ACTIVITY_TRANSITIONS);
         super.onCreate(savedInstanceState);
+        PreferencesState.getInstance().onCreateActivityPreferences(getResources(), getTheme());
 
         if (EyeSeeTeaApplication.permissions == null) {
             EyeSeeTeaApplication.permissions = Permissions.getInstance(this);
@@ -96,15 +92,12 @@ public abstract class BaseActivity extends ActionBarActivity {
         }
 
         initView(savedInstanceState);
-        if (PushController.getInstance().isPushInProgress()) {
-            List<Survey> surveys = Survey.getAllSendingSurveys();
-            Log.d(TAG, "The app was closed in the middle of a push. Surveys sending: "
-                    + surveys.size());
-            for (Survey survey : surveys) {
-                survey.setStatus(Constants.SURVEY_QUARANTINE);
-                survey.save();
-            }
-            PushController.getInstance().setPushInProgress(false);
+        PreferencesState.getInstance().setPushInProgress(false);
+        List<Survey> surveys = Survey.getAllSendingSurveys();
+        Log.d(TAG, "Surveys sending: " + surveys.size());
+        for (Survey survey : surveys) {
+            survey.setStatus(Constants.SURVEY_QUARANTINE);
+            survey.save();
         }
         alarmPush = new AlarmPushReceiver();
         alarmPush.setPushAlarm(this);
@@ -174,7 +167,7 @@ public abstract class BaseActivity extends ActionBarActivity {
             android.support.v7.app.ActionBar actionBar = this.getSupportActionBar();
             LayoutUtils.setActionBarLogo(actionBar);
             LayoutUtils.setActionBarText(actionBar, PreferencesState.getInstance().getOrgUnit(),
-                    this.getResources().getString(R.string.app_name));
+                    this.getResources().getString(R.string.malaria_case_based_reporting));
         }
     }
 
@@ -203,32 +196,32 @@ public abstract class BaseActivity extends ActionBarActivity {
         switch (id) {
             case R.id.action_settings:
                 debugMessage("User asked for settings");
-                if (PushController.getInstance().isPushInProgress()) {
+                if (PreferencesState.getInstance().isPushInProgress()) {
                     Log.d(TAG, "Click in settings true "
-                            + PushController.getInstance().isPushInProgress());
+                            + PreferencesState.getInstance().isPushInProgress());
                     Toast.makeText(this, R.string.toast_push_is_pushing, Toast.LENGTH_SHORT).show();
                 } else {
                     Log.d(TAG, "Click in settings false "
-                            + PushController.getInstance().isPushInProgress());
+                            + PreferencesState.getInstance().isPushInProgress());
                     goSettings();
                 }
                 break;
             case R.id.action_about:
                 debugMessage("User asked for about");
-                showAlertWithHtmlMessageAndLastCommit(R.string.settings_menu_about, R.raw.about,
+                showAlertWithHtmlMessageAndLastCommit(R.string.app_about, R.raw.about,
                         BaseActivity.this);
                 break;
             case R.id.action_copyright:
                 debugMessage("User asked for copyright");
-                showAlertWithMessage(R.string.settings_menu_copyright, R.raw.copyright);
+                mBaseActivityStrategy.showCopyRight(R.string.app_copyright, R.raw.copyright);
                 break;
             case R.id.action_licenses:
                 debugMessage("User asked for software licenses");
-                showAlertWithHtmlMessage(R.string.settings_menu_licenses, R.raw.licenses);
+                showAlertWithHtmlMessage(R.string.app_software_licenses, R.raw.licenses);
                 break;
             case R.id.action_eula:
                 debugMessage("User asked for EULA");
-                showAlertWithHtmlMessage(R.string.settings_menu_eula, R.raw.eula);
+                showAlertWithHtmlMessage(R.string.app_EULA, R.raw.eula);
                 break;
             case android.R.id.home:
                 debugMessage("Go back");
@@ -236,7 +229,12 @@ public abstract class BaseActivity extends ActionBarActivity {
                 break;
             case R.id.export_db:
                 debugMessage("Export db");
-                Intent emailIntent = ExportData.dumpAndSendToAIntent(this);
+                Intent emailIntent = null;
+                try {
+                    emailIntent = ExportData.dumpAndSendToAIntent(this);
+                } catch (ExportDataException e) {
+                    Toast.makeText(this, R.string.error_exporting_data, Toast.LENGTH_LONG).show();
+                }
                 if (emailIntent != null) {
                     startActivityForResult(emailIntent, DUMP_REQUEST_CODE);
                 }
@@ -252,6 +250,7 @@ public abstract class BaseActivity extends ActionBarActivity {
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         super.onPrepareOptionsMenu(menu);
+        mBaseActivityStrategy.hideMenuItems(menu);
         if (!PreferencesState.getInstance().isDevelopOptionActive()
                 || !BuildConfig.developerOptions) {
             MenuItem item = menu.findItem(R.id.export_db);
@@ -260,18 +259,11 @@ public abstract class BaseActivity extends ActionBarActivity {
         return true;
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        // TODO Auto-generated method stub
-        if ((requestCode == DUMP_REQUEST_CODE)) {
-            ExportData.removeDumpIfExist(this);
-        }
-    }
-
     /**
      * Every BaseActivity(Details, Create, Survey) goes back to DashBoard
      */
     public void onBackPressed() {
+        mBaseActivityStrategy.onBackPressed();
         finishAndGo(DashboardActivity.class);
     }
 
@@ -300,55 +292,7 @@ public abstract class BaseActivity extends ActionBarActivity {
     }
 
     protected void goSettings() {
-        Intent intentSettings = new Intent(this, SettingsActivity.class);
-        intentSettings.putExtra(SETTINGS_CALLER_ACTIVITY, this.getClass());
-        startActivity(new Intent(this, SettingsActivity.class));
-    }
-
-
-    public void prepareLocationListener(Survey survey) {
-
-        SurveyLocationListener locationListener = new SurveyLocationListener(survey.getId_survey());
-        LocationManager locationManager =
-                (LocationManager) LocationMemory.getContext().getSystemService(
-                        Context.LOCATION_SERVICE);
-
-
-        if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-            Log.d(TAG, "requestLocationUpdates via NETWORK");
-            if (ActivityCompat.checkSelfPermission(this,
-                    android.Manifest.permission.ACCESS_FINE_LOCATION)
-                    != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION)
-                    != PackageManager.PERMISSION_GRANTED) {
-                return;
-            }
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0,
-                    locationListener);
-        } else if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            Log.d(TAG, "requestLocationUpdates via GPS");
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0,
-                    locationListener);
-        } else {
-            Location lastLocation = locationManager.getLastKnownLocation(
-                    LocationManager.NETWORK_PROVIDER);
-
-            if (lastLocation != null) {
-                Log.d(TAG, "location not available via GPS|NETWORK, last know: " + lastLocation);
-                locationListener.saveLocation(lastLocation);
-            } else {
-                String defaultLatitude = getApplicationContext().getString(
-                        R.string.GPS_LATITUDE_DEFAULT);
-                String defaultLongitude = getApplicationContext().getString(
-                        R.string.GPS_LONGITUDE_DEFAULT);
-                Location defaultLocation = new Location(
-                        getApplicationContext().getString(R.string.GPS_PROVIDER_DEFAULT));
-                defaultLocation.setLatitude(Double.parseDouble(defaultLatitude));
-                defaultLocation.setLongitude(Double.parseDouble(defaultLongitude));
-                Log.d(TAG, "location not available via GPS|NETWORK, default: " + defaultLocation);
-                locationListener.saveLocation(defaultLocation);
-            }
-        }
+        mBaseActivityStrategy.goSettings();
     }
 
     /**
@@ -378,7 +322,7 @@ public abstract class BaseActivity extends ActionBarActivity {
      * @param titleId Id of the title resource
      * @param rawId   Id of the raw text resource
      */
-    private void showAlertWithMessage(int titleId, int rawId) {
+    public void showAlertWithMessage(int titleId, int rawId) {
         InputStream message = getApplicationContext().getResources().openRawResource(rawId);
         new AlertDialog.Builder(this)
                 .setTitle(getApplicationContext().getString(titleId))
@@ -392,7 +336,7 @@ public abstract class BaseActivity extends ActionBarActivity {
      * @param titleId Id of the title resource
      * @param rawId   Id of the raw text resource in HTML format
      */
-    private void showAlertWithHtmlMessage(int titleId, int rawId) {
+    public void showAlertWithHtmlMessage(int titleId, int rawId) {
         InputStream message = getApplicationContext().getResources().openRawResource(rawId);
         final SpannableString linkedMessage = new SpannableString(
                 Html.fromHtml(Utils.convertFromInputStreamToString(message).toString()));
@@ -492,7 +436,25 @@ public abstract class BaseActivity extends ActionBarActivity {
 
     @Override
     protected void onDestroy() {
+        mBaseActivityStrategy.onDestroy();
         super.onDestroy();
         alarmPush.cancelPushAlarm(this);
     }
+
+    @Override
+    protected void onStart() {
+        mBaseActivityStrategy.onStart();
+        super.onStart();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        mBaseActivityStrategy.onWindowFocusChanged(hasFocus);
+        super.onWindowFocusChanged(hasFocus);
+    }
+
+    public BaseActivityStrategy getBaseActivityStrategy() {
+        return mBaseActivityStrategy;
+    }
+
 }

@@ -20,12 +20,17 @@
 package org.eyeseetea.malariacare.utils;
 
 import android.content.Context;
+import android.content.res.Configuration;
+import android.content.res.Resources;
+import android.util.DisplayMetrics;
 
+import org.apache.commons.lang3.StringUtils;
 import org.eyeseetea.malariacare.R;
-import org.eyeseetea.malariacare.database.model.Header;
-import org.eyeseetea.malariacare.database.model.Question;
-import org.eyeseetea.malariacare.database.model.Tab;
-import org.eyeseetea.malariacare.database.utils.PreferencesState;
+import org.eyeseetea.malariacare.data.database.model.Header;
+import org.eyeseetea.malariacare.data.database.model.Question;
+import org.eyeseetea.malariacare.data.database.model.Tab;
+import org.eyeseetea.malariacare.data.database.model.Translation;
+import org.eyeseetea.malariacare.data.database.utils.PreferencesState;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -36,6 +41,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -59,46 +65,44 @@ public class Utils {
         return round(base, Utils.numberOfDecimals);
     }
 
-    public static List<Object> convertTabToArray(Tab tab) {
-        List<Object> result = new ArrayList<Object>();
-
-        for (Header header : tab.getHeaders()) {
-            result.add(header);
-            for (Question question : header.getQuestions()) {
-                result.add(question);
-            }
-
-        }
-        return result;
-    }
-
-    public static List<Object> convertTabToArrayCustom(Tab tab) {
-        List<Object> result = new ArrayList<Object>();
-
-        for (Header header : tab.getHeaders()) {
-            result.add(header);
-            for (Question question : header.getQuestions()) {
-                if (question.hasChildren()) {
-                    result.add(question);
-                }
-            }
-        }
-
-        return result;
-    }
-
-
     public static String getInternationalizedString(String name) {
+        if (name == null) {
+            return "";
+        }
         Context context = PreferencesState.getInstance().getContext();
+
         int identifier = context.getResources().getIdentifier(name, "string",
                 context.getPackageName());
         //if the id is 0 it not exist.
         if (identifier != 0) {
-            name = context.getString(identifier);
+            try {
+                String activeLocale = PreferencesState.getInstance().getLanguageCode();
+                if(activeLocale.equals("")){
+                    Locale locale = Resources.getSystem().getConfiguration().locale;
+                    activeLocale = locale.getLanguage();
+                }
+                name = getLocateString(activeLocale, identifier);
+            } catch (Resources.NotFoundException notFoundException) {
+                if (StringUtils.isNumeric(name)) {
+                    name = Translation.getLocalizedString(Long.valueOf(name),
+                            context.getResources().getConfiguration().locale.toString());
+                }
+            }
         }
+
         return name;
     }
 
+    private static String getLocateString(String locate, int stringId) {
+        Context context = PreferencesState.getInstance().getContext();
+        DisplayMetrics metrics = context.getResources().getDisplayMetrics();
+        Resources r = context.getResources();
+        Configuration c = r.getConfiguration();
+        c.locale = new Locale(locate);
+        Resources res = new Resources(context.getAssets(), metrics, c);
+        return res.getString(stringId);
+    }
+    
     public static String getCommitHash(Context context) {
         String stringCommit;
         //Check if lastcommit.txt file exist, and if not exist show as unavailable.
@@ -130,39 +134,6 @@ public class Utils {
     }
 
     /**
-     * Get a JSONArray and returns a String array from a key value()
-     *
-     * @param value is the key in the first level.
-     * @param json  is JSONArray
-     */
-    public static String[] jsonArrayToStringArray(JSONArray json, String value) {
-        int size = 0;
-        for (int i = 0; i < json.length(); ++i) {
-            JSONObject row = null;
-            try {
-                row = json.getJSONObject(i);
-                if (row.getString(value) != null) {
-                    size++;
-                }
-            } catch (JSONException e) {
-            }
-        }
-        int position = 0;
-        String[] strings = new String[size];
-        for (int i = 0; i < json.length(); ++i) {
-            JSONObject row = null;
-            try {
-                row = json.getJSONObject(i);
-                if (row.getString(value) != null) {
-                    strings[position++] = row.getString(value);
-                }
-            } catch (JSONException e) {
-            }
-        }
-        return strings;
-    }
-
-    /**
      * returns the system data and the event data difference in hours
      *
      * @param limit is the time in hours
@@ -172,26 +143,7 @@ public class Utils {
     public static boolean isDateOverLimit(Calendar date, int limit) {
         Calendar sysDate = Calendar.getInstance();
         sysDate.setTime(new Date());
-        if (differenceInHours((Date) sysDate.getTime(), (Date) date.getTime()) < limit) {
-            return false;
-        } else {
-            return true;
-        }
-    }
-
-    /**
-     * returns the system data and the event data difference in hours
-     *
-     * @param limit      is the time in hours
-     * @param surveyDate is the Date to compare with nextDate
-     * @param nextDate   is the Date to compare with surveyDate
-     * @return if the difference is up than the time in hours
-     */
-    public static boolean isDateOverLimit(Calendar surveyDate, Calendar nextDate, int limit) {
-        Calendar sysDate = Calendar.getInstance();
-        sysDate.setTime(new Date());
-        int difference = differenceInHours((Date) nextDate.getTime(), (Date) surveyDate.getTime());
-        if (difference >= 0 && difference < limit) {
+        if (differenceInHours(sysDate.getTime(), date.getTime()) < limit) {
             return false;
         } else {
             return true;
@@ -228,6 +180,33 @@ public class Utils {
         return calendar;
     }
 
+    public static Date parseStringToDate(String datestring) {
+        return parseStringToCalendar(datestring).getTime();
+    }
+
+    public static String parseDateToString(Date date, String dateFormat) {
+        DateFormat df = new SimpleDateFormat(dateFormat);
+        return df.format(date);
+
+    }
+    public static Calendar parseStringToCalendar(String datestring,String dateFormat) {
+        Calendar calendar = Calendar.getInstance();
+        SimpleDateFormat format = new SimpleDateFormat(dateFormat, Locale.US);
+        try {
+            calendar.setTime(format.parse(datestring));// all done
+        } catch (ParseException e) {
+            calendar = null;
+            e.printStackTrace();
+        }
+        return calendar;
+    }
+
+    public static String getStringFromCalendarWithFormat(Calendar calendar,String dateFormat){
+        SimpleDateFormat format = new SimpleDateFormat(dateFormat, Locale.US);
+        return format.format(calendar.getTime());
+    }
+
+
     public static String getClosingDateString(String format) {
         Calendar sysDate = Calendar.getInstance();
         sysDate.setTime(new Date());
@@ -253,9 +232,28 @@ public class Utils {
         return dateFormatted;
     }
 
+    /**
+     * Method to get the date of today with hour at 0
+     */
+    public static Date getTodayDate() {
+        Calendar today = Calendar.getInstance();
+        today.set(Calendar.HOUR_OF_DAY, 0);
+        return today.getTime();
+    }
+
     public static Calendar DateToCalendar(Date date) {
         Calendar cal = Calendar.getInstance();
         cal.setTime(date);
         return cal;
+    }
+
+    /**
+     * Method to get if the endDate is grater or equal than the startDate
+     * @param starDate The start date to compare with.
+     * @param endDate The date tha has to be greater or equals to the start date.
+     * @return True if is greater or equals false if not.
+     */
+    public static boolean dateGreaterOrEqualsThanDate(Date starDate, Date endDate) {
+        return starDate.equals(endDate) || starDate.before(endDate);
     }
 }

@@ -38,6 +38,15 @@ public class Credentials {
         return this.equals(Credentials.createDemoCredentials());
     }
 
+    public void clear() {
+        username = "";
+        password = "";
+    }
+
+    public boolean isEmpty() {
+        return username.isEmpty() && password.isEmpty();
+    }
+
     public boolean equals(Object o) {
         if (o == null) return false;
         if (!(o instanceof Credentials)) return false;
@@ -55,5 +64,4 @@ public class Credentials {
                 username.hashCode() *
                 password.hashCode();
     }
-
 }

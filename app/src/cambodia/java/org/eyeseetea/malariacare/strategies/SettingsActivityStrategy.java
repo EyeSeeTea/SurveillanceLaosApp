@@ -1,81 +1,52 @@
 package org.eyeseetea.malariacare.strategies;
 
-import android.content.Intent;
+import android.content.SharedPreferences;
 import android.preference.Preference;
 import android.preference.PreferenceScreen;
-import android.support.v7.app.AlertDialog;
+import android.preference.PreferenceCategory;
 
-import com.squareup.otto.Subscribe;
-
-import org.eyeseetea.malariacare.ProgressActivity;
 import org.eyeseetea.malariacare.R;
 import org.eyeseetea.malariacare.SettingsActivity;
-import org.eyeseetea.malariacare.database.iomodules.dhis.exporter.PushController;
+import org.eyeseetea.malariacare.data.database.utils.PreferencesState;
 import org.eyeseetea.malariacare.layout.listeners.LoginRequiredOnPreferenceClickListener;
 import org.eyeseetea.malariacare.layout.listeners.PullRequiredOnPreferenceChangeListener;
-import org.hisp.dhis.android.sdk.job.NetworkJob;
-import org.hisp.dhis.android.sdk.persistence.Dhis2Application;
-import org.hisp.dhis.android.sdk.persistence.preferences.ResourceType;
 
 public class SettingsActivityStrategy extends ASettingsActivityStrategy {
 
-    private static final String TAG = ".SettingsActivityStrategy";
     private PullRequiredOnPreferenceChangeListener pullRequiredOnPreferenceChangeListener;
-    private LoginRequiredOnPreferenceClickListener loginRequiredOnPreferenceClickListener;
+
+
+    private static final String TAG = ".SettingsStrategy";
+    LoginRequiredOnPreferenceClickListener loginRequiredOnPreferenceClickListener;
 
     public SettingsActivityStrategy(SettingsActivity settingsActivity) {
         super(settingsActivity);
 
-        loginRequiredOnPreferenceClickListener = new LoginRequiredOnPreferenceClickListener(
-                settingsActivity);
+        loginRequiredOnPreferenceClickListener =
+                new LoginRequiredOnPreferenceClickListener(
+                        settingsActivity);
 
         pullRequiredOnPreferenceChangeListener = new PullRequiredOnPreferenceChangeListener();
-
     }
 
     @Override
     public void onCreate() {
-        Dhis2Application.bus.register(this);
-    }
-
-    @Override
-    public void setupPreferencesScreen(PreferenceScreen preferenceScreen) {
-
     }
 
     @Override
     public void onStop() {
-        try {
-            //Unregister from bus before leaving
-            Dhis2Application.bus.unregister(this);
-        } catch (Exception e) {
-        }
+
     }
 
-    @Subscribe
-    public void callbackLoginPrePull(NetworkJob.NetworkJobResult<ResourceType> result) {
-        if (PushController.getInstance().isPushInProgress()) {
-            return;
+    @Override
+    public void setupPreferencesScreen(PreferenceScreen preferenceScreen) {
+        if (!PreferencesState.getInstance().isDevelopOptionActive()) {
+            PreferenceCategory preferenceCategory =
+                    (PreferenceCategory) preferenceScreen.findPreference(
+                            settingsActivity.getResources().getString(R.string.pref_cat_server));
+            preferenceCategory.removePreference(preferenceScreen.findPreference(
+                    settingsActivity.getResources().getString(R.string.dhis_url)));
         }
-        //Nothing to check
-        if (result == null || result.getResourceType() == null || !result.getResourceType().equals(
-                ResourceType.USERS)) {
-            return;
-        }
-
-        //Login failed
-        if (result.getResponseHolder().getApiException() != null) {
-            new AlertDialog.Builder(settingsActivity)
-                    .setTitle(R.string.dhis_url_error)
-                    .setMessage(R.string.dhis_url_error_bad_credentials)
-                    .setNeutralButton(android.R.string.yes, null)
-                    .create()
-                    .show();
-        }
-
-        //Login successful start reload
-        settingsActivity.finish();
-        settingsActivity.startActivity(new Intent(settingsActivity, ProgressActivity.class));
     }
 
     @Override
@@ -86,6 +57,31 @@ public class SettingsActivityStrategy extends ASettingsActivityStrategy {
     @Override
     public Preference.OnPreferenceChangeListener getOnPreferenceChangeListener() {
         return pullRequiredOnPreferenceChangeListener;
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if(key.equals(PreferencesState.getInstance().getContext().getString(R.string.developer_option))){
+            settingsActivity.restartActivity();
+        }
+    }
+
+    public static boolean showAnnouncementOnBackPressed() {
+        return true;
+    }
+    @Override
+    public void onStart() {
+
+    }
+
+    @Override
+    public void onBackPressed() {
+
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+
     }
 
 }

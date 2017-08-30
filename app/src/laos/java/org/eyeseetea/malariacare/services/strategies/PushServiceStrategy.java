@@ -1,6 +1,11 @@
 package org.eyeseetea.malariacare.services.strategies;
 
-import org.eyeseetea.malariacare.domain.usecase.PushSurveysUseCase;
+import android.util.Log;
+
+import org.eyeseetea.malariacare.data.database.datasources.ProgramLocalDataSource;
+import org.eyeseetea.malariacare.data.database.utils.PreferencesState;
+import org.eyeseetea.malariacare.data.database.utils.Session;
+import org.eyeseetea.malariacare.domain.usecase.push.MockedPushSurveysUseCase;
 import org.eyeseetea.malariacare.services.PushService;
 
 public class PushServiceStrategy extends APushServiceStrategy {
@@ -12,18 +17,33 @@ public class PushServiceStrategy extends APushServiceStrategy {
 
     @Override
     public void push() {
-        PushSurveysUseCase pushSurveysUseCase = new PushSurveysUseCase(mPushService);
+        if (Session.getCredentials().isDemoCredentials()) {
+            Log.d(TAG, "execute mocked push");
+            executeMockedPush();
+        } else if (isLogged()) {
+            Log.d(TAG, "execute push");
+            executePush();
+        }
+    }
 
-        pushSurveysUseCase.execute(new PushSurveysUseCase.Callback() {
+    protected void executeMockedPush() {
+        ProgramLocalDataSource programLocalDataSource = new ProgramLocalDataSource();
+        MockedPushSurveysUseCase mockedPushSurveysUseCase = new MockedPushSurveysUseCase(
+                programLocalDataSource);
+
+        mockedPushSurveysUseCase.execute(new MockedPushSurveysUseCase.Callback() {
             @Override
             public void onPushFinished() {
+                Log.d(TAG, "onPushMockFinished");
                 mPushService.onPushFinished();
             }
-
-            @Override
-            public void onPushError(String message) {
-                mPushService.onPushError(message);
-            }
         });
+    }
+
+    public boolean isLogged() {
+        if (!PreferencesState.getInstance().getOrgUnit().isEmpty()) {
+            return true;
+        }
+        return false;
     }
 }
